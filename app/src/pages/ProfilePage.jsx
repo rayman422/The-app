@@ -1,48 +1,46 @@
 import React, { useEffect, useState } from 'react';
 import { User, BarChart2, Fish, GitPullRequest, Compass } from 'lucide-react';
-import { auth, db, appId } from '../firebase';
+import { db, appId } from '../firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import AddCatchForm from '../components/AddCatchForm.jsx';
 import { listCatches } from '../services/catches';
+import { useAuth } from '../auth/AuthProvider.jsx';
 
 export default function ProfilePage() {
-  const [user, setUser] = useState(null);
-  const [userId, setUserId] = useState(null);
+  const { user: authUser } = useAuth();
+  const [profile, setProfile] = useState(null);
   const [catches, setCatches] = useState([]);
 
   useEffect(() => {
-    const unsub = auth.onAuthStateChanged(async (u) => {
-      if (u) {
-        setUserId(u.uid);
-        const ref = doc(db, 'artifacts', appId, 'users', u.uid, 'userProfile', 'profile');
-        const snap = await getDoc(ref);
-        if (snap.exists()) setUser(snap.data());
-        listCatches(u.uid).then(setCatches);
-      }
-    });
-    return () => unsub();
-  }, []);
+    if (!authUser) return;
+    (async () => {
+      const ref = doc(db, 'artifacts', appId, 'users', authUser.uid, 'userProfile', 'profile');
+      const snap = await getDoc(ref);
+      if (snap.exists()) setProfile(snap.data());
+      listCatches(authUser.uid).then(setCatches);
+    })();
+  }, [authUser]);
 
-  if (!user) return <div className="flex items-center justify-center min-h-screen text-white">Loading…</div>;
+  if (!authUser || !profile) return <div className="flex items-center justify-center min-h-screen text-white">Loading…</div>;
 
   return (
     <div className="flex flex-col items-center p-4 bg-slate-900 min-h-screen pb-20">
       <div className="w-24 h-24 bg-gray-700 rounded-full flex items-center justify-center mt-8">
         <User size={64} className="text-gray-400" />
       </div>
-      <h1 className="text-white text-2xl font-bold mt-4">{user.name}</h1>
-      <p className="text-gray-400 text-sm">@{user.username} 🇺🇸 {user.location}</p>
+      <h1 className="text-white text-2xl font-bold mt-4">{profile.name}</h1>
+      <p className="text-gray-400 text-sm">@{profile.username} 🇺🇸 {profile.location}</p>
       <div className="flex justify-around w-full mt-6">
         <div className="flex flex-col items-center">
-          <span className="text-white text-2xl font-bold">{user.catches}</span>
+          <span className="text-white text-2xl font-bold">{profile.catches}</span>
           <span className="text-gray-400">Catches</span>
         </div>
         <div className="flex flex-col items-center">
-          <span className="text-white text-2xl font-bold">{user.followers}</span>
+          <span className="text-white text-2xl font-bold">{profile.followers}</span>
           <span className="text-gray-400">Followers</span>
         </div>
         <div className="flex flex-col items-center">
-          <span className="text-white text-2xl font-bold">{user.following}</span>
+          <span className="text-white text-2xl font-bold">{profile.following}</span>
           <span className="text-gray-400">Following</span>
         </div>
       </div>
@@ -50,28 +48,28 @@ export default function ProfilePage() {
         <div className="cursor-pointer">
           <div className="flex flex-col items-center justify-center p-4 bg-slate-800 rounded-2xl">
             <Fish size={32} className="text-gray-400" />
-            <div className="text-white text-3xl font-bold mt-2">{user.species}</div>
+            <div className="text-white text-3xl font-bold mt-2">{profile.species}</div>
             <div className="text-gray-400 text-sm">Species</div>
           </div>
         </div>
         <div className="cursor-pointer">
           <div className="flex flex-col items-center justify-center p-4 bg-slate-800 rounded-2xl">
             <BarChart2 size={32} className="text-gray-400" />
-            <div className="text-white text-3xl font-bold mt-2">{user.catches}</div>
+            <div className="text-white text-3xl font-bold mt-2">{profile.catches}</div>
             <div className="text-gray-400 text-sm">Statistics</div>
           </div>
         </div>
         <div className="cursor-pointer">
           <div className="flex flex-col items-center justify-center p-4 bg-slate-800 rounded-2xl">
             <GitPullRequest size={32} className="text-gray-400" />
-            <div className="text-white text-3xl font-bold mt-2">{user.gearCount}</div>
+            <div className="text-white text-3xl font-bold mt-2">{profile.gearCount}</div>
             <div className="text-gray-400 text-sm">Your gear</div>
           </div>
         </div>
         <div className="cursor-pointer">
           <div className="flex flex-col items-center justify-center p-4 bg-slate-800 rounded-2xl">
             <Compass size={32} className="text-gray-400" />
-            <div className="text-white text-3xl font-bold mt-2">{user.locations}</div>
+            <div className="text-white text-3xl font-bold mt-2">{profile.locations}</div>
             <div className="text-gray-400 text-sm">Your Map</div>
           </div>
         </div>
@@ -79,7 +77,7 @@ export default function ProfilePage() {
 
       <div className="w-full px-4 mt-6">
         <h2 className="text-white text-xl font-bold mb-3">Add a catch</h2>
-        <AddCatchForm userId={userId} onAdded={() => listCatches(userId).then(setCatches)} />
+        <AddCatchForm userId={authUser.uid} onAdded={() => listCatches(authUser.uid).then(setCatches)} />
       </div>
 
       <div className="w-full px-4 mt-6">

@@ -1,6 +1,6 @@
 import React, { lazy } from 'react';
 import { createBrowserRouter, Navigate } from 'react-router-dom';
-import { auth } from './firebase';
+import { useAuth } from './auth/AuthProvider.jsx';
 
 const AppShell = lazy(() => import('./shell/AppShell.jsx'));
 const ProfilePage = lazy(() => import('./pages/ProfilePage.jsx'));
@@ -13,7 +13,8 @@ const AddCatchPage = lazy(() => import('./pages/AddCatchPage.jsx'));
 const SignInPage = lazy(() => import('./pages/SignInPage.jsx'));
 
 function Protected({ children }) {
-  const user = auth.currentUser;
+  const { user, loading } = useAuth();
+  if (loading) return <div className="flex items-center justify-center min-h-screen text-white">Loading…</div>;
   if (!user) return <Navigate to="/signin" replace />;
   return children;
 }
