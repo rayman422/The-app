@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
-import { getApp, getApps, initializeApp } from 'firebase/app';
-import { getAuth, signInWithCustomToken, onAuthStateChanged } from 'firebase/auth';
-import { getFirestore, doc, getDoc, setDoc } from 'firebase/firestore';
+import { signInWithCustomToken, onAuthStateChanged, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import {
   User,
@@ -25,17 +24,9 @@ import {
   Sunset,
 } from 'lucide-react';
 import './index.css';
-
-// Read provided globals (may be undefined in local dev)
-const rawFirebaseConfig = typeof window !== 'undefined' && typeof window.__firebase_config !== 'undefined' ? window.__firebase_config : (typeof __firebase_config !== 'undefined' ? __firebase_config : null);
-const initialAuthToken = typeof window !== 'undefined' && typeof window.__initial_auth_token !== 'undefined' ? window.__initial_auth_token : (typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null);
-const appId = typeof window !== 'undefined' && typeof window.__app_id !== 'undefined' ? window.__app_id : (typeof __app_id !== 'undefined' ? __app_id : 'default-app-id');
-
-// Initialize Firebase safely (HMR-safe, guard missing config)
-const firebaseConfig = rawFirebaseConfig ? JSON.parse(rawFirebaseConfig) : null;
-const app = firebaseConfig ? (getApps().length ? getApp() : initializeApp(firebaseConfig)) : null;
-const db = app ? getFirestore(app) : null;
-const auth = app ? getAuth(app) : null;
+import { app, auth, db, appId } from './firebase';
+import AddCatchForm from './components/AddCatchForm.jsx';
+import { listCatches } from './services/catches';
 
 // Data for charts
 const monthlyCatches = [
@@ -94,7 +85,31 @@ const StatCard = ({ icon, label, value }) => (
   </div>
 );
 
-const UserProfile = ({ user, userId, setPage }) => (
+const RecentCatches = ({ items }) => (
+  <div className="mt-4 space-y-3 w-full px-4">
+    {items.length === 0 && (
+      <div className="flex items-center space-x-4 p-4 bg-slate-800 rounded-xl">
+        <img src="https://placehold.co/80x80/0e172a/94a3b8?text=fish" alt="Catch" className="rounded-lg" />
+        <div className="flex-1">
+          <h3 className="text-white font-semibold">Start your logbook</h3>
+          <p className="text-gray-400 text-sm">Track all your catches in one place! Find and relive your fishing memories whenever you'd like.</p>
+        </div>
+      </div>
+    )}
+    {items.map((c) => (
+      <div key={c.id || c.createdAt} className="flex items-center space-x-4 p-4 bg-slate-800 rounded-xl">
+        <img src={`https://placehold.co/80x80/0e172a/94a3b8?text=${encodeURIComponent((c.species || 'Fish').split(' ')[0])}`} alt="Catch" className="rounded-lg" />
+        <div className="flex-1 text-white">
+          <div className="font-semibold">{c.species}</div>
+          <div className="text-xs text-gray-400">{c.length ? `${c.length} in` : ''} {c.weight ? `• ${c.weight} lb` : ''}</div>
+          {c.notes && <div className="text-xs text-gray-400 mt-1">{c.notes}</div>}
+        </div>
+      </div>
+    ))}
+  </div>
+);
+
+const UserProfile = ({ user, userId, setPage, catches, onAddedCatch }) => (
   <div className="flex flex-col items-center p-4 bg-slate-900 min-h-screen pb-20">
     <div className="w-24 h-24 bg-gray-700 rounded-full flex items-center justify-center mt-8">
       <User size={64} className="text-gray-400" />
@@ -132,17 +147,15 @@ const UserProfile = ({ user, userId, setPage }) => (
       </div>
       <StatCard icon={<Compass size={32} className="text-gray-400" />} label="Your Map" value={user.locations} />
     </div>
+
     <div className="w-full px-4 mt-6">
-      <h2 className="text-white text-xl font-bold">Catches</h2>
-      <div className="mt-4">
-        <div className="flex items-center space-x-4 p-4 bg-slate-800 rounded-xl mb-4">
-          <img src="https://placehold.co/80x80/0e172a/94a3b8?text=fish" alt="Catch" className="rounded-lg" />
-          <div className="flex-1">
-            <h3 className="text-white font-semibold">Start your logbook</h3>
-            <p className="text-gray-400 text-sm">Track all your catches in one place! Find and relive your fishing memories whenever you'd like.</p>
-          </div>
-        </div>
-      </div>
+      <h2 className="text-white text-xl font-bold mb-3">Add a catch</h2>
+      <AddCatchForm userId={userId} onAdded={onAddedCatch} />
+    </div>
+
+    <div className="w-full px-4 mt-6">
+      <h2 className="text-white text-xl font-bold">Recent catches</h2>
+      <RecentCatches items={catches} />
     </div>
   </div>
 );
@@ -384,11 +397,12 @@ const App = () => {
   const [user, setUser] = useState(null);
   const [userId, setUserId] = useState(null);
   const [isAuthReady, setIsAuthReady] = useState(false);
+  const [recentCatches, setRecentCatches] = useState([]);
+  const [showAuthPrompt, setShowAuthPrompt] = useState(false);
 
   useEffect(() => {
-    if (!app || !auth || !db) {
+    if (!auth || !db) {
       console.warn('Firebase not configured; running in offline demo mode.');
-      // Provide demo user so the UI renders locally
       const demoUser = {
         name: 'Israel Raymon',
         username: 'israelraymon',
@@ -403,16 +417,22 @@ const App = () => {
       setUser(demoUser);
       setUserId('demo-user');
       setIsAuthReady(true);
+      listCatches('demo-user').then(setRecentCatches);
       return;
     }
 
+    const token = window.__initial_auth_token;
     const signIn = async () => {
       try {
-        if (initialAuthToken) {
-          await signInWithCustomToken(auth, initialAuthToken);
+        if (token) {
+          await signInWithCustomToken(auth, token);
+        } else {
+          // Defer user popup until after first render
+          setShowAuthPrompt(true);
         }
       } catch (error) {
         console.error('Firebase custom sign-in failed:', error);
+        setShowAuthPrompt(true);
       }
     };
     signIn();
@@ -430,31 +450,56 @@ const App = () => {
           setUser(userDoc.data());
         } else {
           const defaultUser = {
-            name: 'Israel Raymon',
-            username: 'israelraymon',
-            location: 'Tennessee',
-            catches: 105,
-            followers: 35,
-            following: 42,
-            species: 25,
-            gearCount: 12,
-            locations: 15,
+            name: 'New Angler',
+            username: authUser.displayName?.toLowerCase().replace(/\s+/g, '') || 'angler',
+            location: 'Unknown',
+            catches: 0,
+            followers: 0,
+            following: 0,
+            species: 0,
+            gearCount: 0,
+            locations: 0,
           };
           await setDoc(userDocRef, defaultUser);
           setUser(defaultUser);
         }
+        listCatches(currentUserId).then(setRecentCatches);
       } else {
         console.log('No user is signed in.');
         setIsAuthReady(false);
         setUser(null);
         setUserId(null);
+        setRecentCatches([]);
       }
     });
 
     return () => unsubscribe();
   }, []);
 
+  const handleGoogleSignIn = async () => {
+    if (!auth) return;
+    try {
+      const provider = new GoogleAuthProvider();
+      await signInWithPopup(auth, provider);
+      setShowAuthPrompt(false);
+    } catch (e) {
+      console.error('Google sign-in failed', e);
+    }
+  };
+
   const renderPage = () => {
+    if (showAuthPrompt && !userId && auth) {
+      return (
+        <div className="flex items-center justify-center min-h-screen bg-slate-900 text-white">
+          <div className="max-w-md w-full p-6">
+            <h1 className="text-2xl font-bold mb-2">Sign in</h1>
+            <p className="text-gray-400 mb-4">Sign in with Google to sync your catches securely.</p>
+            <button onClick={handleGoogleSignIn} className="w-full bg-emerald-600 text-white rounded-xl py-2 font-semibold">Continue with Google</button>
+          </div>
+        </div>
+      );
+    }
+
     if (!isAuthReady || !user) {
       return (
         <div className="flex items-center justify-center min-h-screen bg-slate-900">
@@ -462,9 +507,10 @@ const App = () => {
         </div>
       );
     }
+
     switch (currentPage) {
       case 'profile':
-        return <UserProfile user={user} userId={userId} setPage={setCurrentPage} />;
+        return <UserProfile user={user} userId={userId} setPage={setCurrentPage} catches={recentCatches} onAddedCatch={() => listCatches(userId).then(setRecentCatches)} />;
       case 'statistics':
         return <Statistics />;
       case 'species':
@@ -479,14 +525,16 @@ const App = () => {
         return (
           <div className="bg-slate-900 p-4 min-h-screen text-white text-center pb-20">
             <h1 className="text-xl font-bold mt-8">Add a Catch</h1>
-            <p className="mt-4">This page is a placeholder for logging a new catch.</p>
+            <div className="max-w-md mx-auto text-left mt-4">
+              <AddCatchForm userId={userId} onAdded={() => listCatches(userId).then(setRecentCatches)} />
+            </div>
             <button onClick={() => setCurrentPage('profile')} className="mt-6 bg-emerald-600 text-white rounded-xl py-2 px-6 font-semibold">
               Back to Profile
             </button>
           </div>
         );
       default:
-        return <UserProfile user={user} userId={userId} setPage={setCurrentPage} />;
+        return <UserProfile user={user} userId={userId} setPage={setCurrentPage} catches={recentCatches} onAddedCatch={() => listCatches(userId).then(setRecentCatches)} />;
     }
   };
 

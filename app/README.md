@@ -1,12 +1,47 @@
-# React + Vite
+# Fishing App (Vite + React)
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+## Setup
 
-Currently, two official plugins are available:
+1. Copy `.env.example` to `.env` and fill in your Firebase web app values:
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+```
+VITE_FIREBASE_API_KEY=
+VITE_FIREBASE_AUTH_DOMAIN=
+VITE_FIREBASE_PROJECT_ID=
+VITE_FIREBASE_STORAGE_BUCKET=
+VITE_FIREBASE_MESSAGING_SENDER_ID=
+VITE_FIREBASE_APP_ID=
+VITE_APP_ID=my-app-id
+```
 
-## Expanding the ESLint configuration
+2. Install dependencies:
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+```
+npm install
+```
+
+3. Run the dev server:
+
+```
+npm run dev
+```
+
+4. Build for production:
+
+```
+npm run build
+npm run preview
+```
+
+## Features
+
+- Firebase Auth (custom token or Google popup fallback)
+- Firestore storage for user profile and catches; localStorage fallback in demo mode
+- Tailwind CSS UI
+- Recharts-based statistics
+- Offline/demo mode if Firebase is not configured
+
+## Notes
+
+- The app expects a Firestore layout under `artifacts/{VITE_APP_ID}/users/{uid}` for user profile and `catches` collection for entries.
+- To provision Auth providers, enable Google in Firebase Console.
