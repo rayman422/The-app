@@ -1,0 +1,60 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Public species reference data
+    match /species/{speciesId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // Weather logs tied to a user (optional collection)
+    match /weatherLogs/{logId} {
+      allow read, write: if request.auth != null && request.auth.uid == resource.data.userId;
+    }
+
+    // User-scoped data
+    match /users/{userId} {
+      // Profile document(s)
+      match /profile/{profileId} {
+        allow read: if resource.data.privacy == 'public' || (request.auth != null && request.auth.uid == userId);
+        allow create, update, delete: if request.auth != null && request.auth.uid == userId;
+      }
+
+      // Catches subcollection
+      match /catches/{catchId} {
+        allow read, create, update, delete: if request.auth != null && request.auth.uid == userId && isValidCatch();
+      }
+
+      // Gear subcollection
+      match /gear/{gearId} {
+        allow read, create, update, delete: if request.auth != null && request.auth.uid == userId && isValidGear();
+      }
+
+      // Any other documents under the user
+      match /{document=**} {
+        allow read, create, update, delete: if request.auth != null && request.auth.uid == userId;
+      }
+    }
+
+    function isValidCatch() {
+      // Minimal validation; expand as needed
+      return request.method in ['get', 'list'] || (
+        (request.resource.data.speciesId is string &&
+         request.resource.data.caughtAt is timestamp &&
+         (!('length' in request.resource.data) || request.resource.data.length >= 0) &&
+         (!('weight' in request.resource.data) || request.resource.data.weight >= 0) &&
+         (!('geohashPrefix' in request.resource.data) || request.resource.data.geohashPrefix is string)
+        )
+      );
+    }
+
+    function isValidGear() {
+      return request.method in ['get', 'list'] || (
+        (request.resource.data.name is string &&
+         (!('brand' in request.resource.data) || request.resource.data.brand is string) &&
+         (!('category' in request.resource.data) || request.resource.data.category is string)
+        )
+      );
+    }
+  }
+}

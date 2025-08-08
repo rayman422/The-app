@@ -1,0 +1,28 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "catches",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        { "fieldPath": "speciesId", "order": "ASCENDING" },
+        { "fieldPath": "caughtAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "catches",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        { "fieldPath": "geohashPrefix", "order": "ASCENDING" },
+        { "fieldPath": "caughtAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "weatherLogs",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        { "fieldPath": "caughtAt", "order": "DESCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}
