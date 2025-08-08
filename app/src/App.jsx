@@ -24,9 +24,9 @@ import {
   Sunset,
 } from 'lucide-react';
 import './index.css';
-import { app, auth, db, appId } from './firebase';
+import { auth, db, appId } from './firebase';
 import AddCatchForm from './components/AddCatchForm.jsx';
-import { listCatches } from './services/catches';
+import { listCatches, recomputeUserStats } from './services/catches';
 
 // Data for charts
 const monthlyCatches = [
@@ -392,6 +392,15 @@ const MapPage = ({ setPage }) => (
   </div>
 );
 
+const ConfigError = () => (
+  <div className="flex items-center justify-center min-h-screen bg-slate-900 text-white p-6">
+    <div className="max-w-md text-center">
+      <h1 className="text-2xl font-bold mb-2">Configuration required</h1>
+      <p className="text-gray-400">Missing Firebase environment variables. Copy .env.example to .env and fill in your Firebase web app credentials.</p>
+    </div>
+  </div>
+);
+
 const App = () => {
   const [currentPage, setCurrentPage] = useState('profile');
   const [user, setUser] = useState(null);
@@ -400,26 +409,11 @@ const App = () => {
   const [recentCatches, setRecentCatches] = useState([]);
   const [showAuthPrompt, setShowAuthPrompt] = useState(false);
 
+  // Hard require Firebase
+  const isConfigReady = !!db && !!auth;
+
   useEffect(() => {
-    if (!auth || !db) {
-      console.warn('Firebase not configured; running in offline demo mode.');
-      const demoUser = {
-        name: 'Israel Raymon',
-        username: 'israelraymon',
-        location: 'Tennessee',
-        catches: 105,
-        followers: 35,
-        following: 42,
-        species: 25,
-        gearCount: 12,
-        locations: 15,
-      };
-      setUser(demoUser);
-      setUserId('demo-user');
-      setIsAuthReady(true);
-      listCatches('demo-user').then(setRecentCatches);
-      return;
-    }
+    if (!isConfigReady) return;
 
     const token = window.__initial_auth_token;
     const signIn = async () => {
@@ -427,7 +421,6 @@ const App = () => {
         if (token) {
           await signInWithCustomToken(auth, token);
         } else {
-          // Defer user popup until after first render
           setShowAuthPrompt(true);
         }
       } catch (error) {
@@ -441,7 +434,6 @@ const App = () => {
       if (authUser) {
         const currentUserId = authUser.uid;
         setUserId(currentUserId);
-        console.log('Current User ID:', currentUserId);
         setIsAuthReady(true);
 
         const userDocRef = doc(db, 'artifacts', appId, 'users', currentUserId, 'userProfile', 'profile');
@@ -450,7 +442,7 @@ const App = () => {
           setUser(userDoc.data());
         } else {
           const defaultUser = {
-            name: 'New Angler',
+            name: authUser.displayName || 'New Angler',
             username: authUser.displayName?.toLowerCase().replace(/\s+/g, '') || 'angler',
             location: 'Unknown',
             catches: 0,
@@ -465,7 +457,6 @@ const App = () => {
         }
         listCatches(currentUserId).then(setRecentCatches);
       } else {
-        console.log('No user is signed in.');
         setIsAuthReady(false);
         setUser(null);
         setUserId(null);
@@ -474,10 +465,9 @@ const App = () => {
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [isConfigReady]);
 
   const handleGoogleSignIn = async () => {
-    if (!auth) return;
     try {
       const provider = new GoogleAuthProvider();
       await signInWithPopup(auth, provider);
@@ -487,8 +477,20 @@ const App = () => {
     }
   };
 
+  const onCatchAdded = async () => {
+    if (!userId) return;
+    await listCatches(userId).then(setRecentCatches);
+    await recomputeUserStats(userId);
+    // Refresh profile numbers
+    const userDocRef = doc(db, 'artifacts', appId, 'users', userId, 'userProfile', 'profile');
+    const userDoc = await getDoc(userDocRef);
+    if (userDoc.exists()) setUser(userDoc.data());
+  };
+
   const renderPage = () => {
-    if (showAuthPrompt && !userId && auth) {
+    if (!isConfigReady) return <ConfigError />;
+
+    if (showAuthPrompt && !userId) {
       return (
         <div className="flex items-center justify-center min-h-screen bg-slate-900 text-white">
           <div className="max-w-md w-full p-6">
@@ -510,7 +512,7 @@ const App = () => {
 
     switch (currentPage) {
       case 'profile':
-        return <UserProfile user={user} userId={userId} setPage={setCurrentPage} catches={recentCatches} onAddedCatch={() => listCatches(userId).then(setRecentCatches)} />;
+        return <UserProfile user={user} userId={userId} setPage={setCurrentPage} catches={recentCatches} onAddedCatch={onCatchAdded} />;
       case 'statistics':
         return <Statistics />;
       case 'species':
@@ -526,7 +528,7 @@ const App = () => {
           <div className="bg-slate-900 p-4 min-h-screen text-white text-center pb-20">
             <h1 className="text-xl font-bold mt-8">Add a Catch</h1>
             <div className="max-w-md mx-auto text-left mt-4">
-              <AddCatchForm userId={userId} onAdded={() => listCatches(userId).then(setRecentCatches)} />
+              <AddCatchForm userId={userId} onAdded={onCatchAdded} />
             </div>
             <button onClick={() => setCurrentPage('profile')} className="mt-6 bg-emerald-600 text-white rounded-xl py-2 px-6 font-semibold">
               Back to Profile
@@ -534,7 +536,7 @@ const App = () => {
           </div>
         );
       default:
-        return <UserProfile user={user} userId={userId} setPage={setCurrentPage} catches={recentCatches} onAddedCatch={() => listCatches(userId).then(setRecentCatches)} />;
+        return <UserProfile user={user} userId={userId} setPage={setCurrentPage} catches={recentCatches} onAddedCatch={onCatchAdded} />;
     }
   };
 

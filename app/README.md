@@ -2,7 +2,7 @@
 
 ## Setup
 
-1. Copy `.env.example` to `.env` and fill in your Firebase web app values:
+1. Copy `.env.example` to `.env` and fill in your Firebase web app values (required):
 
 ```
 VITE_FIREBASE_API_KEY=
@@ -35,13 +35,19 @@ npm run preview
 
 ## Features
 
-- Firebase Auth (custom token or Google popup fallback)
-- Firestore storage for user profile and catches; localStorage fallback in demo mode
+- Firebase Auth (custom token or Google popup)
+- Firestore storage for user profile and catches
 - Tailwind CSS UI
 - Recharts-based statistics
-- Offline/demo mode if Firebase is not configured
 
-## Notes
+## Firestore structure
 
-- The app expects a Firestore layout under `artifacts/{VITE_APP_ID}/users/{uid}` for user profile and `catches` collection for entries.
-- To provision Auth providers, enable Google in Firebase Console.
+- User profile: `artifacts/{VITE_APP_ID}/users/{uid}/userProfile/profile`
+- Catches: `artifacts/{VITE_APP_ID}/users/{uid}/catches/{doc}`
+
+After adding a catch, the app recalculates and updates `catches` and `species` counts in the user profile.
+
+## Firebase console
+
+- Enable Google sign-in in Authentication > Sign-in method.
+- Create a Web App to get the required config values for `.env`.
