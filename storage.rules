@@ -1,0 +1,92 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    function isValidImage() {
+      return request.resource.contentType.matches('image/.*') &&
+             request.resource.size < 10 * 1024 * 1024; // 10MB limit
+    }
+    
+    function isValidImageType() {
+      return request.resource.contentType in ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+    }
+
+    // User profile avatars
+    match /artifacts/{appId}/users/{userId}/avatar/{fileName} {
+      allow read: if isAuthenticated();
+      allow write: if isOwner(userId) && isValidImage() && isValidImageType();
+      allow delete: if isOwner(userId);
+    }
+
+    // Catch photos
+    match /artifacts/{appId}/users/{userId}/catches/{catchId}/{fileName} {
+      allow read: if isAuthenticated(); // All authenticated users can view catch photos
+      allow write: if isOwner(userId) && isValidImage() && isValidImageType();
+      allow delete: if isOwner(userId);
+    }
+
+    // Gear photos
+    match /artifacts/{appId}/users/{userId}/gear/{gearId}/{fileName} {
+      allow read: if isOwner(userId); // Only owner can view gear photos
+      allow write: if isOwner(userId) && isValidImage() && isValidImageType();
+      allow delete: if isOwner(userId);
+    }
+
+    // Species images (global database)
+    match /artifacts/{appId}/species/{speciesId}/{fileName} {
+      allow read: if isAuthenticated();
+      allow write: if false; // Only allow writes through Cloud Functions or admin
+    }
+
+    // Fishing spot photos
+    match /artifacts/{appId}/fishingSpots/{spotId}/{fileName} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && isValidImage() && isValidImageType();
+    }
+
+    // User fishing spot photos (private)
+    match /artifacts/{appId}/users/{userId}/fishingSpots/{spotId}/{fileName} {
+      allow read: if isOwner(userId);
+      allow write: if isOwner(userId) && isValidImage() && isValidImageType();
+      allow delete: if isOwner(userId);
+    }
+
+    // Temporary uploads (for processing)
+    match /artifacts/{appId}/temp/{userId}/{fileName} {
+      allow read, write: if isOwner(userId) && isValidImage();
+      allow delete: if isOwner(userId);
+    }
+
+    // Public assets (app icons, species images, etc.)
+    match /artifacts/{appId}/public/{allPaths=**} {
+      allow read: if true; // Public read access
+      allow write: if false; // Only allow writes through Cloud Functions
+    }
+
+    // User exports and backups
+    match /artifacts/{appId}/users/{userId}/exports/{fileName} {
+      allow read: if isOwner(userId);
+      allow write: if isOwner(userId);
+      allow delete: if isOwner(userId);
+    }
+
+    // Regulations documents and images
+    match /artifacts/{appId}/regulations/{regulationId}/{fileName} {
+      allow read: if true; // Public regulations data
+      allow write: if false; // Only allow writes through Cloud Functions
+    }
+
+    // Admin uploads
+    match /artifacts/{appId}/admin/{allPaths=**} {
+      allow read, write: if false; // Only allow access through Cloud Functions
+    }
+  }
+}
