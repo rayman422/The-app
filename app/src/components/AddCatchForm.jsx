@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { addCatch } from '../services/catches';
+import toast from 'react-hot-toast';
 
 export default function AddCatchForm({ userId, onAdded }) {
   const [species, setSpecies] = useState('Largemouth bass');
@@ -20,9 +21,11 @@ export default function AddCatchForm({ userId, onAdded }) {
       setWeight('');
       setLength('');
       setNotes('');
+      toast.success('Catch saved');
       onAdded?.();
     } catch (err) {
       setError('Failed to save catch');
+      toast.error('Failed to save catch');
     } finally {
       setSaving(false);
     }

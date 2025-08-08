@@ -1,6 +1,7 @@
 import React, { Suspense } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import { User, BarChart2, Plus, GitPullRequest, CloudSun, Map as MapIcon } from 'lucide-react';
+import { Toaster } from 'react-hot-toast';
 
 export default function AppShell() {
   const location = useLocation();
@@ -9,6 +10,7 @@ export default function AppShell() {
   return (
     <div className="min-h-screen bg-slate-900 font-sans">
       <style>{`body { background-color: #0f172a; font-family: 'Inter', sans-serif; }`}</style>
+      <Toaster position="top-center" />
       <div className="max-w-md mx-auto pb-20">
         <Suspense fallback={<div className="flex items-center justify-center min-h-screen text-white">Loading…</div>}>
           <Outlet />

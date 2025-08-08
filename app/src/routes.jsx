@@ -1,5 +1,6 @@
 import React, { lazy } from 'react';
-import { createBrowserRouter } from 'react-router-dom';
+import { createBrowserRouter, Navigate } from 'react-router-dom';
+import { auth } from './firebase';
 
 const AppShell = lazy(() => import('./shell/AppShell.jsx'));
 const ProfilePage = lazy(() => import('./pages/ProfilePage.jsx'));
@@ -9,19 +10,27 @@ const GearPage = lazy(() => import('./pages/GearPage.jsx'));
 const ForecastPage = lazy(() => import('./pages/ForecastPage.jsx'));
 const MapPage = lazy(() => import('./pages/MapPage.jsx'));
 const AddCatchPage = lazy(() => import('./pages/AddCatchPage.jsx'));
+const SignInPage = lazy(() => import('./pages/SignInPage.jsx'));
+
+function Protected({ children }) {
+  const user = auth.currentUser;
+  if (!user) return <Navigate to="/signin" replace />;
+  return children;
+}
 
 export const router = createBrowserRouter([
   {
     path: '/',
     element: <AppShell />,
     children: [
-      { index: true, element: <ProfilePage /> },
-      { path: 'statistics', element: <StatisticsPage /> },
-      { path: 'species', element: <SpeciesPage /> },
-      { path: 'gear', element: <GearPage /> },
-      { path: 'forecast', element: <ForecastPage /> },
-      { path: 'map', element: <MapPage /> },
-      { path: 'add-catch', element: <AddCatchPage /> },
+      { index: true, element: <Protected><ProfilePage /></Protected> },
+      { path: 'statistics', element: <Protected><StatisticsPage /></Protected> },
+      { path: 'species', element: <Protected><SpeciesPage /></Protected> },
+      { path: 'gear', element: <Protected><GearPage /></Protected> },
+      { path: 'forecast', element: <Protected><ForecastPage /></Protected> },
+      { path: 'map', element: <Protected><MapPage /></Protected> },
+      { path: 'add-catch', element: <Protected><AddCatchPage /></Protected> },
+      { path: 'signin', element: <SignInPage /> },
     ],
   },
 ]);
