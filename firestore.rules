@@ -1,0 +1,161 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    function isValidUserData(data) {
+      return data.keys().hasAll(['name', 'username', 'email']) &&
+             data.name is string && data.name.size() > 0 &&
+             data.username is string && data.username.size() > 0 &&
+             data.email is string && data.email.size() > 0;
+    }
+    
+    function isValidCatchData(data) {
+      return data.keys().hasAll(['species', 'dateTime']) &&
+             data.species is string && data.species.size() > 0 &&
+             data.dateTime is timestamp;
+    }
+    
+    function isValidGearData(data) {
+      return data.keys().hasAll(['name', 'category']) &&
+             data.name is string && data.name.size() > 0 &&
+             data.category is string && data.category.size() > 0;
+    }
+
+    // Global species database - readable by all authenticated users
+    match /artifacts/{appId}/species/{speciesId} {
+      allow read: if isAuthenticated();
+      allow write: if false; // Only allow writes through Cloud Functions
+    }
+
+    // Global weather logs - readable by all authenticated users
+    match /artifacts/{appId}/weatherLogs/{logId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated(); // Users can log weather data
+    }
+
+    // Global fishing spots - readable by all authenticated users
+    match /artifacts/{appId}/fishingSpots/{spotId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && 
+                   (request.auth.uid == resource.data.createdBy ||
+                    request.auth.uid in resource.data.contributors);
+    }
+
+    // Global regulations database - readable by all
+    match /artifacts/{appId}/regulations/{regulationId} {
+      allow read: if true; // Public regulations data
+      allow write: if false; // Only allow writes through Cloud Functions
+    }
+
+    // User-specific data
+    match /artifacts/{appId}/users/{userId} {
+      // User profile - owner can read/write, others can read public profiles
+      match /userProfile/profile {
+        allow read: if isOwner(userId) || 
+                   (isAuthenticated() && resource.data.profilePrivacy == 'public');
+        allow write: if isOwner(userId) && isValidUserData(request.resource.data);
+      }
+
+      // User catches - owner full access, others can read public catches
+      match /catches/{catchId} {
+        allow read: if isOwner(userId) || 
+                   (isAuthenticated() && resource.data.isPublic == true);
+        allow create: if isOwner(userId) && isValidCatchData(request.resource.data);
+        allow update: if isOwner(userId);
+        allow delete: if isOwner(userId);
+      }
+
+      // User gear - private to owner only
+      match /gear/{gearId} {
+        allow read, write: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidGearData(request.resource.data);
+      }
+
+      // User statistics - private to owner only
+      match /statistics/{statId} {
+        allow read, write: if isOwner(userId);
+      }
+
+      // User social data - controlled access
+      match /social/{socialId} {
+        allow read: if isOwner(userId) || isAuthenticated();
+        allow write: if isAuthenticated();
+      }
+
+      // User fishing spots - owner can read/write, others can read public ones
+      match /fishingSpots/{spotId} {
+        allow read: if isOwner(userId) || 
+                   (isAuthenticated() && resource.data.isPublic == true);
+        allow write: if isOwner(userId);
+      }
+
+      // User preferences and settings - private to owner
+      match /settings/{settingId} {
+        allow read, write: if isOwner(userId);
+      }
+    }
+
+    // Social interactions (likes, comments, follows)
+    match /artifacts/{appId}/socialInteractions/{interactionId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && request.auth.uid == request.resource.data.fromUserId;
+      allow update: if isAuthenticated() && request.auth.uid == resource.data.fromUserId;
+      allow delete: if isAuthenticated() && request.auth.uid == resource.data.fromUserId;
+    }
+
+    // Activity feed - users can read their own feed
+    match /artifacts/{appId}/users/{userId}/activityFeed/{activityId} {
+      allow read: if isOwner(userId);
+      allow write: if false; // Only allow writes through Cloud Functions
+    }
+
+    // Notification system
+    match /artifacts/{appId}/users/{userId}/notifications/{notificationId} {
+      allow read: if isOwner(userId);
+      allow update: if isOwner(userId); // Users can mark notifications as read
+      allow write: if false; // Only allow creation through Cloud Functions
+    }
+
+    // User privacy settings
+    match /artifacts/{appId}/users/{userId}/privacy/{privacyId} {
+      allow read, write: if isOwner(userId);
+    }
+
+    // Reporting system
+    match /artifacts/{appId}/reports/{reportId} {
+      allow create: if isAuthenticated();
+      allow read: if false; // Only admins through Cloud Functions
+    }
+
+    // Analytics and aggregated data - read-only for authenticated users
+    match /artifacts/{appId}/analytics/{analyticsId} {
+      allow read: if isAuthenticated();
+      allow write: if false; // Only allow writes through Cloud Functions
+    }
+
+    // Admin-only collections
+    match /artifacts/{appId}/admin/{document=**} {
+      allow read, write: if false; // Only allow access through Cloud Functions
+    }
+
+    // Backup and export data - owner only
+    match /artifacts/{appId}/users/{userId}/exports/{exportId} {
+      allow read, write: if isOwner(userId);
+    }
+
+    // Rate limiting and quota tracking
+    match /artifacts/{appId}/users/{userId}/quotas/{quotaId} {
+      allow read: if isOwner(userId);
+      allow write: if false; // Only allow writes through Cloud Functions
+    }
+  }
+}
