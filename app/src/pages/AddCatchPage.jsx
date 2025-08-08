@@ -1,6 +1,6 @@
 import React from 'react';
 import AddCatchForm from '../components/AddCatchForm.jsx';
-import { useAuth } from '../auth/AuthProvider.jsx';
+import useAuth from '../auth/useAuth.js';
 
 export default function AddCatchPage() {
   const { user } = useAuth();

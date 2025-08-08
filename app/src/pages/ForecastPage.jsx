@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { ChevronLeft } from 'lucide-react';
 import { geocodeCity, fetchForecast } from '../services/openMeteo';
 
@@ -7,11 +7,10 @@ export default function ForecastPage() {
   const [loc, setLoc] = useState({ name: 'Austin, TX', lat: 30.2672, lon: -97.7431 });
   const [current, setCurrent] = useState(null);
   const [hourly, setHourly] = useState([]);
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const didInit = useRef(false);
 
   const loadForecast = async (latitude, longitude, name) => {
-    setLoading(true);
     setError('');
     try {
       const data = await fetchForecast(latitude, longitude);
@@ -26,24 +25,24 @@ export default function ForecastPage() {
       })) || [];
       setHourly(hours);
       setLoc({ name, lat: latitude, lon: longitude });
-    } catch (e) {
+    } catch {
       setError('Failed to load forecast');
-    } finally {
-      setLoading(false);
     }
   };
 
   useEffect(() => {
+    if (didInit.current) return;
+    didInit.current = true;
     loadForecast(loc.lat, loc.lon, loc.name);
-  }, []);
+  }, [loc.lat, loc.lon, loc.name]);
 
   const handleSearch = async (e) => {
     e.preventDefault();
     try {
       const g = await geocodeCity(city);
       await loadForecast(g.lat, g.lon, g.name);
-    } catch (e) {
-      setError(e.message || 'Location not found');
+    } catch (err) {
+      setError(err.message || 'Location not found');
     }
   };
 

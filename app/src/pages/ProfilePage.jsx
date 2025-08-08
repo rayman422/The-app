@@ -4,7 +4,7 @@ import { db, appId, auth } from '../firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import AddCatchForm from '../components/AddCatchForm.jsx';
 import { listCatches } from '../services/catches';
-import { useAuth } from '../auth/AuthProvider.jsx';
+import useAuth from '../auth/useAuth.js';
 
 export default function ProfilePage() {
   const { user: authUser } = useAuth();

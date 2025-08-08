@@ -23,7 +23,7 @@ export default function AddCatchForm({ userId, onAdded }) {
       setNotes('');
       toast.success('Catch saved');
       onAdded?.();
-    } catch (err) {
+    } catch {
       setError('Failed to save catch');
       toast.error('Failed to save catch');
     } finally {
