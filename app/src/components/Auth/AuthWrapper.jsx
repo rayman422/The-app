@@ -1,3 +1,4 @@
+/* eslint react-refresh/only-export-components: ["warn", { allowConstantExport: true }] */
 import { useState, useEffect, createContext, useContext } from 'react';
 import { 
   getAuth, 

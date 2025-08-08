@@ -189,7 +189,7 @@ const PrivacyToggle = ({ isPrivate, onToggle }) => (
   </motion.button>
 );
 
-export const UserProfile = ({ user, userId, setPage, fishingDB, storage }) => {
+export const UserProfile = ({ user, setPage, storage }) => {
   const { updateUserProfile, logout, isAnonymous } = useAuth();
   const [showSettings, setShowSettings] = useState(false);
 

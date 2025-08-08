@@ -102,7 +102,7 @@ export const LoginScreen = ({ onToggleMode, isSignUp = false }) => {
       } else {
         await signInWithEmail(email, password);
       }
-    } catch (err) {
+    } catch {
       // Error is handled by AuthWrapper
     }
   };
@@ -125,7 +125,7 @@ export const LoginScreen = ({ onToggleMode, isSignUp = false }) => {
         default:
           break;
       }
-    } catch (err) {
+    } catch {
       // Error is handled by AuthWrapper
     }
   };
@@ -142,7 +142,7 @@ export const LoginScreen = ({ onToggleMode, isSignUp = false }) => {
       setLocalError('');
       await resetPassword(email);
       setResetEmailSent(true);
-    } catch (err) {
+    } catch {
       // Error is handled by AuthWrapper
     }
   };

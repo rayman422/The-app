@@ -37,7 +37,7 @@ const NavButton = ({ icon, label, isActive, onClick }) => (
   </motion.button>
 );
 
-export const BottomNavbar = ({ currentPage, setPage, user }) => {
+export const BottomNavbar = ({ currentPage, setPage }) => {
   const navItems = [
     { key: 'map', icon: <MapIcon size={24} />, label: 'Map' },
     { key: 'statistics', icon: <BarChart2 size={24} />, label: 'Stats' },

@@ -79,7 +79,6 @@ export const MainApp = ({ fishingDB, storage }) => {
       <BottomNavbar 
         currentPage={currentPage} 
         setPage={setCurrentPage}
-        user={user}
       />
     </div>
   );
