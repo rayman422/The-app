@@ -1,6 +1,7 @@
 import { getApp, getApps, initializeApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
+import { getAuth, setPersistence, browserLocalPersistence } from 'firebase/auth';
+import { getFirestore, enableMultiTabIndexedDbPersistence, enableIndexedDbPersistence } from 'firebase/firestore';
+import { getStorage } from 'firebase/storage';
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -16,5 +17,16 @@ const isConfigValid = Object.values(firebaseConfig).every((v) => typeof v === 's
 export const app = isConfigValid ? (getApps().length ? getApp() : initializeApp(firebaseConfig)) : null;
 export const db = app ? getFirestore(app) : null;
 export const auth = app ? getAuth(app) : null;
+export const storage = app ? getStorage(app) : null;
 
 export const appId = import.meta.env.VITE_APP_ID || 'default-app-id';
+
+// Configure persistence (best-effort; ignore errors if in unsupported env)
+if (auth) {
+  setPersistence(auth, browserLocalPersistence).catch(() => {});
+}
+if (db) {
+  enableMultiTabIndexedDbPersistence(db).catch(() => {
+    enableIndexedDbPersistence(db).catch(() => {});
+  });
+}
