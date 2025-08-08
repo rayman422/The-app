@@ -1,15 +1,22 @@
 import React from 'react';
 import { auth } from '../firebase';
 import { GoogleAuthProvider, signInWithPopup, signInWithCustomToken } from 'firebase/auth';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 export default function SignInPage() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const from = location.state?.from || '/';
+
   const handleGoogle = async () => {
     const provider = new GoogleAuthProvider();
     await signInWithPopup(auth, provider);
+    navigate(from, { replace: true });
   };
   const handleToken = async () => {
     const token = window.__initial_auth_token;
     if (token) await signInWithCustomToken(auth, token);
+    navigate(from, { replace: true });
   };
   return (
     <div className="flex items-center justify-center min-h-screen bg-slate-900 text-white">

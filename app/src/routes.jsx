@@ -1,5 +1,5 @@
 import React, { lazy } from 'react';
-import { createBrowserRouter, Navigate } from 'react-router-dom';
+import { createBrowserRouter, Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from './auth/AuthProvider.jsx';
 
 const AppShell = lazy(() => import('./shell/AppShell.jsx'));
@@ -14,8 +14,9 @@ const SignInPage = lazy(() => import('./pages/SignInPage.jsx'));
 
 function Protected({ children }) {
   const { user, loading } = useAuth();
+  const location = useLocation();
   if (loading) return <div className="flex items-center justify-center min-h-screen text-white">Loading…</div>;
-  if (!user) return <Navigate to="/signin" replace />;
+  if (!user) return <Navigate to="/signin" replace state={{ from: location.pathname }} />;
   return children;
 }
 
@@ -32,6 +33,7 @@ export const router = createBrowserRouter([
       { path: 'map', element: <Protected><MapPage /></Protected> },
       { path: 'add-catch', element: <Protected><AddCatchPage /></Protected> },
       { path: 'signin', element: <SignInPage /> },
+      { path: '*', element: <Navigate to="/" replace /> },
     ],
   },
 ]);

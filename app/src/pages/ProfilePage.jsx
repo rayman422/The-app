@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { User, BarChart2, Fish, GitPullRequest, Compass } from 'lucide-react';
-import { db, appId } from '../firebase';
+import { User, BarChart2, Fish, GitPullRequest, Compass, LogOut } from 'lucide-react';
+import { db, appId, auth } from '../firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import AddCatchForm from '../components/AddCatchForm.jsx';
 import { listCatches } from '../services/catches';
@@ -25,7 +25,12 @@ export default function ProfilePage() {
 
   return (
     <div className="flex flex-col items-center p-4 bg-slate-900 min-h-screen pb-20">
-      <div className="w-24 h-24 bg-gray-700 rounded-full flex items-center justify-center mt-8">
+      <div className="w-full flex justify-end">
+        <button onClick={() => auth.signOut()} className="text-gray-300 hover:text-white flex items-center gap-1">
+          <LogOut size={16} /> Sign out
+        </button>
+      </div>
+      <div className="w-24 h-24 bg-gray-700 rounded-full flex items-center justify-center mt-4">
         <User size={64} className="text-gray-400" />
       </div>
       <h1 className="text-white text-2xl font-bold mt-4">{profile.name}</h1>
