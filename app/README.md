@@ -35,19 +35,33 @@ npm run preview
 
 ## Features
 
+- React Router with code-splitting (lazy routes)
 - Firebase Auth (custom token or Google popup)
 - Firestore storage for user profile and catches
 - Tailwind CSS UI
 - Recharts-based statistics
+- OpenStreetMap map via react-leaflet
+- Weather via Open-Meteo (free), with 10-minute in-memory caching per lat/lon
 
 ## Firestore structure
 
 - User profile: `artifacts/{VITE_APP_ID}/users/{uid}/userProfile/profile`
 - Catches: `artifacts/{VITE_APP_ID}/users/{uid}/catches/{doc}`
 
-After adding a catch, the app recalculates and updates `catches` and `species` counts in the user profile.
+After adding a catch, the app updates `catches` and recomputes `species` counts in the user profile.
 
-## Firebase console
+## Deploy (Firebase Hosting)
 
-- Enable Google sign-in in Authentication > Sign-in method.
-- Create a Web App to get the required config values for `.env`.
+- Ensure you have the Firebase CLI installed and logged in
+- Build the app: `npm run build`
+- Use the included `firebase.json` and `firestore.rules`
+- Initialize your project if needed: `firebase use <your-project-id>`
+- Deploy hosting and rules:
+```
+firebase deploy --only hosting,firestore:rules
+```
+
+## Notes
+
+- Enable Google sign-in in Firebase Console.
+- The SPA router requires hosting rewrites to `index.html` (configured in `firebase.json`).

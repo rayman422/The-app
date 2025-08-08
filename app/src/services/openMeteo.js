@@ -1,6 +1,9 @@
 const OPEN_METEO_BASE = 'https://api.open-meteo.com/v1/forecast';
 const GEOCODE_BASE = 'https://geocoding-api.open-meteo.com/v1/search';
 
+const forecastCache = new Map(); // key: `${lat},${lon}` -> { expiresAt, data }
+const TEN_MIN = 10 * 60 * 1000;
+
 export async function geocodeCity(query) {
   const url = new URL(GEOCODE_BASE);
   url.searchParams.set('name', query);
@@ -15,6 +18,11 @@ export async function geocodeCity(query) {
 }
 
 export async function fetchForecast(lat, lon) {
+  const key = `${lat},${lon}`;
+  const now = Date.now();
+  const cached = forecastCache.get(key);
+  if (cached && cached.expiresAt > now) return cached.data;
+
   const url = new URL(OPEN_METEO_BASE);
   url.searchParams.set('latitude', String(lat));
   url.searchParams.set('longitude', String(lon));
@@ -23,5 +31,7 @@ export async function fetchForecast(lat, lon) {
   url.searchParams.set('timezone', 'auto');
   const res = await fetch(url.toString());
   if (!res.ok) throw new Error('Forecast fetch failed');
-  return res.json();
+  const data = await res.json();
+  forecastCache.set(key, { expiresAt: now + TEN_MIN, data });
+  return data;
 }
