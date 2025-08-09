@@ -10,19 +10,18 @@ import { FishingDatabase } from './utils/firestoreCollections';
 import { motion, AnimatePresence } from 'framer-motion';
 import './index.css';
 
-// Read provided globals (may be undefined in local dev)
-const rawFirebaseConfig = typeof window !== 'undefined' && typeof window.__firebase_config !== 'undefined' 
-  ? window.__firebase_config 
-  : (typeof __firebase_config !== 'undefined' ? __firebase_config : null);
-const initialAuthToken = typeof window !== 'undefined' && typeof window.__initial_auth_token !== 'undefined' 
-  ? window.__initial_auth_token 
-  : (typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null);
-const appId = typeof window !== 'undefined' && typeof window.__app_id !== 'undefined' 
-  ? window.__app_id 
-  : (typeof __app_id !== 'undefined' ? __app_id : 'default-app-id');
+// Read provided globals safely via globalThis to avoid no-undef
+const rawFirebaseConfig = (typeof globalThis !== 'undefined' && '__firebase_config' in globalThis)
+  ? globalThis.__firebase_config
+  : null;
+const appId = (typeof globalThis !== 'undefined' && '__app_id' in globalThis)
+  ? globalThis.__app_id
+  : 'default-app-id';
 
 // Initialize Firebase safely (HMR-safe, guard missing config)
-const firebaseConfig = rawFirebaseConfig ? JSON.parse(rawFirebaseConfig) : null;
+const firebaseConfig = rawFirebaseConfig
+  ? (typeof rawFirebaseConfig === 'string' ? JSON.parse(rawFirebaseConfig) : rawFirebaseConfig)
+  : null;
 const app = firebaseConfig ? (getApps().length ? getApp() : initializeApp(firebaseConfig)) : null;
 const db = app ? getFirestore(app) : null;
 const storage = app ? getStorage(app) : null;
