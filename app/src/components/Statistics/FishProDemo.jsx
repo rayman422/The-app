@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import {
   Fish,
@@ -106,14 +106,14 @@ const StatChart = ({ title, data, dataKey, barColor }) => (
   </div>
 );
 
-const UserProfile = ({ user, userId, setSubPage }) => (
+const UserProfile = ({ user }) => (
   <div className="flex flex-col items-center p-4 bg-gray-50 min-h-screen pb-20">
     <div className="w-24 h-24 bg-gray-200 rounded-full flex items-center justify-center mt-8">
       <User size={64} className="text-gray-400" />
     </div>
     <h1 className="text-gray-900 text-2xl font-bold mt-4">{user?.name || 'Angler'}</h1>
     <p className="text-gray-500 text-sm">@{user?.username || 'angler'} 🇺🇸 {user?.location || ''}</p>
-    <p className="text-gray-500 text-xs mt-2 truncate max-w-[80%]">User ID: {userId}</p>
+
     <div className="flex justify-around w-full mt-6">
       <div className="flex flex-col items-center">
         <span className="text-gray-900 text-2xl font-bold">{user?.catches ?? 0}</span>
@@ -249,7 +249,7 @@ const Forecast = () => {
   );
 };
 
-const DashboardView = ({ user, userId, setSubPage }) => (
+const DashboardView = ({ user }) => (
   <div className="space-y-6">
     <div className="bg-gradient-to-br from-blue-600 to-blue-800 rounded-2xl p-6 text-white">
       <div className="flex justify-between items-start mb-4">
@@ -289,13 +289,13 @@ const DashboardView = ({ user, userId, setSubPage }) => (
           </div>
         </div>
         <div className="grid grid-cols-3 gap-4 mt-4">
-          <div onClick={() => setSubPage('profile')} className="cursor-pointer">
+          <div className="cursor-pointer">
             <StatCard icon={<User size={32} className="text-gray-400" />} label="Profile" value={user.followers} />
           </div>
-          <div onClick={() => setSubPage('gear')} className="cursor-pointer">
+          <div className="cursor-pointer">
             <StatCard icon={<GitPullRequest size={32} className="text-gray-400" />} label="Gear" value={user.gearCount} />
           </div>
-          <div onClick={() => setSubPage('forecast')} className="cursor-pointer">
+          <div className="cursor-pointer">
             <StatCard icon={<CloudSun size={32} className="text-gray-400" />} label="Forecast" value={currentConditions.temp + '°'} />
           </div>
         </div>
@@ -451,13 +451,12 @@ const AnalyticsView = ({ monthlyOverride }) => (
 );
 
 export const FishProDemo = () => {
-  const { user, userId, isLoading } = useAuth();
+  const { user, isLoading } = useAuth();
   const [activeTab, setActiveTab] = React.useState('dashboard');
   const [subPage, setSubPage] = React.useState(null);
   const [speciesLive, setSpeciesLive] = React.useState(null);
   const [monthlyLive, setMonthlyLive] = React.useState(null);
 
-  // Try to pull live data via global fishingDB if passed down through window or context
   const fishingDB = window.__fishingDB || null;
 
   useEffect(() => {
@@ -468,7 +467,9 @@ export const FishProDemo = () => {
           const list = await fishingDB.getSpecies();
           if (mounted) setSpeciesLive(list);
         }
-      } catch {}
+      } catch {
+        // no-op
+      }
     })();
     return () => { mounted = false; };
   }, [fishingDB]);
@@ -477,17 +478,19 @@ export const FishProDemo = () => {
     let mounted = true;
     (async () => {
       try {
-        if (fishingDB && userId) {
-          const stats = await fishingDB.getUserStatistics(userId, 'year');
+        if (fishingDB && user) {
+          const stats = await fishingDB.getUserStatistics(user.uid || user.id, 'year');
           if (mounted) {
             const months = Array.from({ length: 12 }, (_, m) => ({ name: 'JFMAMJJASOND'[m], catches: stats.monthlyBreakdown[m] || 0 }));
             setMonthlyLive(months);
           }
         }
-      } catch {}
+      } catch {
+        // no-op
+      }
     })();
     return () => { mounted = false; };
-  }, [fishingDB, userId]);
+  }, [fishingDB, user]);
 
   const speciesData = useMemo(() => {
     if (!speciesLive) return fishSpecies;
@@ -511,7 +514,7 @@ export const FishProDemo = () => {
       );
     }
     if (subPage === 'profile') {
-      return <UserProfile user={user} userId={userId} setSubPage={setSubPage} />;
+      return <UserProfile user={user} />;
     }
     if (subPage === 'gear') {
       return <GearList />;
@@ -521,7 +524,7 @@ export const FishProDemo = () => {
     }
     switch (activeTab) {
       case 'dashboard':
-        return <DashboardView user={user} userId={userId} setSubPage={setSubPage} />;
+        return <DashboardView user={user} />;
       case 'species':
         return <SpeciesView speciesOverride={speciesData} />;
       case 'logbook':
@@ -529,7 +532,7 @@ export const FishProDemo = () => {
       case 'analytics':
         return <AnalyticsView monthlyOverride={monthlyData} />;
       default:
-        return <DashboardView user={user} userId={userId} setSubPage={setSubPage} />;
+        return <DashboardView user={user} />;
     }
   };
 

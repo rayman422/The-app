@@ -32,7 +32,7 @@ export const Forecast = ({ setPage }) => {
         setLoading(true); setError(null);
         const w = await fetchWeather(coords.lat, coords.lon);
         if (active) setData(w);
-      } catch (e) {
+      } catch {
         if (active) setError('Failed to load weather');
       } finally {
         if (active) setLoading(false);

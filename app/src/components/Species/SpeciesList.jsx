@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { ChevronLeft, Fish, Search, Filter } from 'lucide-react';
 
-export const SpeciesList = ({ setPage, fishingDB }) => {
+export const SpeciesList = (props) => {
+  const { setPage, fishingDB, setSelectedSpeciesId } = props;
   const [species, setSpecies] = useState([]);
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState('');
@@ -75,7 +76,7 @@ export const SpeciesList = ({ setPage, fishingDB }) => {
                   <div className="text-xs text-gray-400">Avg Length: {sp.averageSize.length} in</div>
                 )}
               </div>
-              <button onClick={() => { (typeof window !== 'undefined' && (window.__speciesId = sp.id)); props?.setSelectedSpeciesId ? props.setSelectedSpeciesId(sp.id) : null; setPage('speciesDetail'); }} className="px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700">View</button>
+              <button onClick={() => { if (setSelectedSpeciesId) setSelectedSpeciesId(sp.id); setPage('speciesDetail'); }} className="px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700">View</button>
             </div>
           ))}
         </div>

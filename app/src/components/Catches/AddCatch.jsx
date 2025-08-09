@@ -8,7 +8,7 @@ import { MapPicker } from '../Map/MapPicker';
 
 export const AddCatch = ({ setPage, fishingDB, storage }) => {
   const { userId } = useAuth();
-  const { register, handleSubmit, reset, setValue } = useForm({
+  const { register, handleSubmit, reset, setValue, watch } = useForm({
     defaultValues: {
       species: '',
       weight: '',
@@ -118,6 +118,8 @@ export const AddCatch = ({ setPage, fishingDB, storage }) => {
   };
 
   const speciesDatalistId = useMemo(() => 'species-list', []);
+  const currentLat = watch('latitude');
+  const currentLon = watch('longitude');
 
   return (
     <div className="bg-slate-900 p-4 min-h-screen pb-24">
@@ -220,8 +222,8 @@ export const AddCatch = ({ setPage, fishingDB, storage }) => {
               </div>
               <div className="mb-3">
                 <MapPicker
-                  latitude={parseFloat((document.querySelector('input[name=\"latitude\"]')?.value) || '0') || undefined}
-                  longitude={parseFloat((document.querySelector('input[name=\"longitude\"]')?.value) || '0') || undefined}
+                  latitude={currentLat ? parseFloat(currentLat) : undefined}
+                  longitude={currentLon ? parseFloat(currentLon) : undefined}
                   onChange={({ latitude, longitude }) => {
                     setValue('latitude', latitude.toFixed(6));
                     setValue('longitude', longitude.toFixed(6));

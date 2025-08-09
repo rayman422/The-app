@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { ChevronLeft, GitPullRequest, Plus, Trash2, Pencil, Upload, Image as ImageIcon } from 'lucide-react';
 import { useAuth } from '../Auth/AuthWrapper';
@@ -15,7 +15,7 @@ export const GearList = ({ setPage, fishingDB, storage }) => {
 
   const canUse = !!userId && !!fishingDB;
 
-  const load = async () => {
+  const load = useCallback(async () => {
     if (!canUse) { setLoading(false); return; }
     setLoading(true);
     try {
@@ -26,9 +26,9 @@ export const GearList = ({ setPage, fishingDB, storage }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [canUse, fishingDB, userId]);
 
-  useEffect(() => { load(); }, [userId, fishingDB]);
+  useEffect(() => { load(); }, [load]);
 
   const onSubmit = async (e) => {
     e.preventDefault();
