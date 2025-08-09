@@ -3,6 +3,7 @@ import { useAuth } from './Auth/AuthWrapper';
 import { UserProfile } from './Profile/UserProfile';
 import { Statistics } from './Statistics/Statistics';
 import { SpeciesList } from './Species/SpeciesList';
+import { SpeciesDetail } from './Species/SpeciesDetail';
 import { GearList } from './Gear/GearList';
 import { Forecast } from './Weather/Forecast';
 import { MapPage } from './Map/MapPage';
@@ -48,6 +49,8 @@ export const MainApp = ({ fishingDB, storage }) => {
         return <Statistics {...props} />;
       case 'species':
         return <SpeciesList {...props} />;
+      case 'speciesDetail':
+        return <SpeciesDetail {...props} speciesId={window.__speciesId} />;
       case 'gear':
         return <GearList {...props} />;
       case 'forecast':

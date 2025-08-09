@@ -75,7 +75,7 @@ export const SpeciesList = ({ setPage, fishingDB }) => {
                   <div className="text-xs text-gray-400">Avg Length: {sp.averageSize.length} in</div>
                 )}
               </div>
-              <Fish size={24} className="text-emerald-400" />
+              <button onClick={() => { window.__speciesId = sp.id; setPage('speciesDetail'); }} className="px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700">View</button>
             </div>
           ))}
         </div>

@@ -276,6 +276,12 @@ export class FishingDatabase {
     return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
   }
 
+  async getSpeciesById(speciesId) {
+    const ref = this.getDocRef('species', speciesId);
+    const d = await getDoc(ref);
+    return d.exists() ? { id: d.id, ...d.data() } : null;
+  }
+
   async addSpecies(speciesData) {
     const speciesRef = this.getCollectionRef('species');
     const speciesDoc = {
