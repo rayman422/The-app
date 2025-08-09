@@ -10,6 +10,10 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
+    defaults:
+      run:
+        working-directory: app
+
     strategy:
       matrix:
         node-version: [18.x, 20.x, 22.x]
@@ -25,13 +29,10 @@ jobs:
           cache-dependency-path: app/package-lock.json
 
       - name: Install dependencies
-        working-directory: app
         run: npm ci
 
       - name: Lint
-        working-directory: app
         run: npm run -s lint
 
       - name: Build
-        working-directory: app
         run: npm run -s build
