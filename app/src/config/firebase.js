@@ -3,6 +3,8 @@ import { getFirestore, connectFirestoreEmulator } from 'firebase/firestore';
 import { getAuth, connectAuthEmulator } from 'firebase/auth';
 import { getStorage, connectStorageEmulator } from 'firebase/storage';
 import { getAnalytics, isSupported } from 'firebase/analytics';
+import { getPerformance } from 'firebase/performance';
+import { getCrashlytics, isSupported as isCrashlyticsSupported } from 'firebase/crashlytics';
 
 // Firebase configuration for development
 const devConfig = {
@@ -47,6 +49,24 @@ if (import.meta.env.VITE_ENABLE_ANALYTICS === 'true') {
   isSupported().then(yes => yes ? analytics = getAnalytics(app) : null);
 }
 export { analytics };
+
+// Initialize performance monitoring
+let performance = null;
+if (import.meta.env.VITE_ENABLE_PERFORMANCE === 'true') {
+  try {
+    performance = getPerformance(app);
+  } catch (error) {
+    console.warn('Performance monitoring not supported:', error);
+  }
+}
+export { performance };
+
+// Initialize crashlytics if supported and enabled
+let crashlytics = null;
+if (import.meta.env.VITE_ENABLE_CRASHLYTICS === 'true') {
+  isCrashlyticsSupported().then(yes => yes ? crashlytics = getCrashlytics(app) : null);
+}
+export { crashlytics };
 
 // Connect to emulators in development
 if (isDev && import.meta.env.VITE_USE_EMULATORS === 'true') {

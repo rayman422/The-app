@@ -13,7 +13,8 @@ import {
   updatePassword,
   deleteUser,
   updateProfile,
-  signOut
+  signOut,
+  onIdTokenChanged
 } from 'firebase/auth';
 import { doc, getDoc, setDoc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { ApiClient } from '../../utils/apiClient';
@@ -69,6 +70,20 @@ export const AuthProvider = ({ children, appId }) => {
       setIsLoading(false);
       return;
     }
+
+    // Set up token refresh listener
+    const tokenUnsubscribe = onIdTokenChanged(auth, async (user) => {
+      if (user) {
+        try {
+          // Force token refresh if needed
+          await user.getIdToken(true);
+          console.log('Token refreshed successfully');
+        } catch (error) {
+          console.error('Token refresh failed:', error);
+          setError('Authentication session expired. Please sign in again.');
+        }
+      }
+    });
 
     const unsubscribe = onAuthStateChanged(auth, async (authUser) => {
       setIsLoading(true);
@@ -128,7 +143,10 @@ export const AuthProvider = ({ children, appId }) => {
       setIsLoading(false);
     });
 
-    return () => unsubscribe();
+    return () => {
+      unsubscribe();
+      tokenUnsubscribe();
+    };
   }, [auth, db, appId]);
 
   // Auth methods
