@@ -33,6 +33,11 @@ service cloud.firestore {
     match /artifacts/{appId}/species/{speciesId} {
       allow read: if isAuthenticated();
       allow write: if false; // Only allow writes through Cloud Functions
+      // Expert gear recommendations subcollection (read-only)
+      match /gear_recommendations/{recId} {
+        allow read: if isAuthenticated();
+        allow write: if false;
+      }
     }
 
     // Global weather logs - readable by all authenticated users

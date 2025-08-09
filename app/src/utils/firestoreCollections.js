@@ -282,6 +282,12 @@ export class FishingDatabase {
     return d.exists() ? { id: d.id, ...d.data() } : null;
   }
 
+  async getSpeciesGearRecommendations(speciesId) {
+    const recsRef = collection(this.db, 'artifacts', this.appId, 'species', speciesId, 'gear_recommendations');
+    const snapshot = await getDocs(recsRef);
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  }
+  
   async addSpecies(speciesData) {
     const speciesRef = this.getCollectionRef('species');
     const speciesDoc = {

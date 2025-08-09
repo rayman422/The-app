@@ -31,6 +31,7 @@ const pageVariants = {
 
 export const MainApp = ({ fishingDB, storage }) => {
   const [currentPage, setCurrentPage] = useState('profile');
+  const [selectedSpeciesId, setSelectedSpeciesId] = useState(null);
   const { user, userId } = useAuth();
 
   const renderPage = () => {
@@ -39,7 +40,9 @@ export const MainApp = ({ fishingDB, storage }) => {
       userId, 
       setPage: setCurrentPage,
       fishingDB,
-      storage
+      storage,
+      setSelectedSpeciesId,
+      selectedSpeciesId
     };
 
     switch (currentPage) {
@@ -50,7 +53,7 @@ export const MainApp = ({ fishingDB, storage }) => {
       case 'species':
         return <SpeciesList {...props} />;
       case 'speciesDetail':
-        return <SpeciesDetail {...props} speciesId={window.__speciesId} />;
+        return <SpeciesDetail {...props} speciesId={selectedSpeciesId || (typeof window !== 'undefined' ? window.__speciesId : null)} />;
       case 'gear':
         return <GearList {...props} />;
       case 'forecast':
