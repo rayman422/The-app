@@ -6,6 +6,7 @@ import {
   Map as MapIcon,
   CloudSun,
   GitPullRequest,
+  Sparkles,
 } from 'lucide-react';
 
 const NavButton = ({ icon, label, isActive, onClick }) => (
@@ -44,6 +45,7 @@ export const BottomNavbar = ({ currentPage, setPage }) => {
     { key: 'addCatch', icon: <Plus size={24} />, label: 'Add', isSpecial: true },
     { key: 'gear', icon: <GitPullRequest size={24} />, label: 'Gear' },
     { key: 'forecast', icon: <CloudSun size={24} />, label: 'Weather' },
+    { key: 'assistant', icon: <Sparkles size={24} />, label: 'AI' },
     { key: 'profile', icon: <User size={24} />, label: 'Profile' },
   ];
 

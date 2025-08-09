@@ -42,4 +42,9 @@ export class ApiClient {
   getSignedUrl(filePath, ttlMinutes = 15) {
     return this.request(`/signed-url`, { method: 'POST', body: JSON.stringify({ filePath, ttlMinutes }) });
   }
+
+  // Hugging Face proxy
+  hfTextGeneration(prompt, model) {
+    return this.request(`/ai/text-generation`, { method: 'POST', body: JSON.stringify({ prompt, model }) });
+  }
 }

@@ -13,6 +13,7 @@ from firebase_admin import auth as fb_auth
 from firebase_admin import credentials
 from google.cloud import firestore
 from google.cloud import storage
+from huggingface_hub import InferenceClient
 
 # Load .env if present
 load_dotenv()
@@ -21,6 +22,9 @@ APP_ID = os.getenv("APP_ID", "default-app-id")
 DEV_NO_AUTH = os.getenv("DEV_NO_AUTH", "false").lower() == "true"
 CORS_ORIGINS = [o.strip() for o in os.getenv("CORS_ORIGINS", "http://localhost:5173").split(",") if o.strip()]
 GCS_BUCKET = os.getenv("GCS_BUCKET")
+
+HF_TOKEN = os.getenv("HUGGINGFACE_HUB_TOKEN")
+HF_MODEL = os.getenv("HF_MODEL", "gpt2")
 
 # Initialize Firebase Admin if not already
 if not firebase_admin._apps:
@@ -36,7 +40,12 @@ if not firebase_admin._apps:
             pass
 
 # Firestore client (works with ADC or emulator)
-firestore_client = firestore.Client(project=os.getenv("FIREBASE_PROJECT_ID"))
+firestore_client = None
+try:
+    firestore_client = firestore.Client(project=os.getenv("FIREBASE_PROJECT_ID"))
+except Exception:
+    if not DEV_NO_AUTH:
+        raise
 
 # Storage client
 storage_client: Optional[storage.Client]
@@ -114,6 +123,13 @@ class CatchCreate(BaseModel):
     tags: Optional[List[str]] = []
 
 
+class TextGenRequest(BaseModel):
+  prompt: str
+  model: Optional[str] = None
+  max_new_tokens: Optional[int] = 128
+  temperature: Optional[float] = 0.7
+
+
 # Auth dependency
 async def get_user_id(authorization: Optional[str] = Header(None)) -> Optional[str]:
     if DEV_NO_AUTH:
@@ -138,6 +154,8 @@ async def health() -> dict:
 async def get_profile(user_id: str, uid: Optional[str] = Depends(get_user_id)):
     if uid and uid != user_id:
         raise HTTPException(status_code=403, detail="Forbidden")
+    if not firestore_client:
+        raise HTTPException(status_code=501, detail="Firestore not configured")
 
     doc_ref = (
         firestore_client.collection("artifacts").document(APP_ID)
@@ -154,6 +172,8 @@ async def get_profile(user_id: str, uid: Optional[str] = Depends(get_user_id)):
 async def update_profile(user_id: str, update: ProfileUpdate, uid: Optional[str] = Depends(get_user_id)):
     if uid and uid != user_id:
         raise HTTPException(status_code=403, detail="Forbidden")
+    if not firestore_client:
+        raise HTTPException(status_code=501, detail="Firestore not configured")
 
     data = {k: v for k, v in update.model_dump().items() if v is not None}
     data["updatedAt"] = firestore.SERVER_TIMESTAMP
@@ -171,6 +191,8 @@ async def update_profile(user_id: str, update: ProfileUpdate, uid: Optional[str]
 async def list_catches(user_id: str, uid: Optional[str] = Depends(get_user_id)):
     if uid and uid != user_id:
         raise HTTPException(status_code=403, detail="Forbidden")
+    if not firestore_client:
+        raise HTTPException(status_code=501, detail="Firestore not configured")
 
     col_ref = (
         firestore_client.collection("artifacts").document(APP_ID)
@@ -185,6 +207,8 @@ async def list_catches(user_id: str, uid: Optional[str] = Depends(get_user_id)):
 async def create_catch(user_id: str, catch: CatchCreate, uid: Optional[str] = Depends(get_user_id)):
     if uid and uid != user_id:
         raise HTTPException(status_code=403, detail="Forbidden")
+    if not firestore_client:
+        raise HTTPException(status_code=501, detail="Firestore not configured")
 
     col_ref = (
         firestore_client.collection("artifacts").document(APP_ID)
@@ -202,6 +226,8 @@ async def create_catch(user_id: str, catch: CatchCreate, uid: Optional[str] = De
 async def delete_catch(user_id: str, catch_id: str, uid: Optional[str] = Depends(get_user_id)):
     if uid and uid != user_id:
         raise HTTPException(status_code=403, detail="Forbidden")
+    if not firestore_client:
+        raise HTTPException(status_code=501, detail="Firestore not configured")
 
     doc_ref = (
         firestore_client.collection("artifacts").document(APP_ID)
@@ -230,3 +256,20 @@ async def get_signed_url(req: SignedUrlRequest, uid: Optional[str] = Depends(get
     blob = bucket.blob(req.filePath)
     url = blob.generate_signed_url(expiration=timedelta(minutes=req.ttlMinutes or 15), method="GET")
     return {"url": url, "expiresIn": (req.ttlMinutes or 15) * 60}
+
+
+@app.post("/ai/text-generation")
+async def ai_text_generation(req: TextGenRequest):
+    if not HF_TOKEN:
+        raise HTTPException(status_code=501, detail="HF token not configured")
+    client = InferenceClient(model=req.model or HF_MODEL, token=HF_TOKEN)
+    # Use non-streaming simple generation
+    try:
+        text = client.text_generation(
+            req.prompt,
+            max_new_tokens=req.max_new_tokens or 128,
+            temperature=req.temperature or 0.7,
+        )
+        return {"text": text}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

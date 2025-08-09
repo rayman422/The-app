@@ -9,6 +9,7 @@ import { MapPage } from './Map/MapPage';
 import { AddCatch } from './Catches/AddCatch';
 import { BottomNavbar } from './Navigation/BottomNavbar';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Assistant } from './Assistant/Assistant';
 
 const pageVariants = {
   enter: { 
@@ -56,6 +57,8 @@ export const MainApp = ({ fishingDB, storage }) => {
         return <MapPage {...props} />;
       case 'addCatch':
         return <AddCatch {...props} />;
+      case 'assistant':
+        return <Assistant />;
       default:
         return <UserProfile {...props} />;
     }
