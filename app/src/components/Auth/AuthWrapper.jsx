@@ -17,6 +17,7 @@ import {
   signOut
 } from 'firebase/auth';
 import { doc, getDoc, setDoc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { ApiClient } from '../../utils/apiClient';
 
 const AuthContext = createContext();
 
@@ -35,6 +36,9 @@ export const AuthProvider = ({ children, app, db, appId }) => {
   const [error, setError] = useState(null);
 
   const auth = app ? getAuth(app) : null;
+
+  const apiBase = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_BASE_URL) ? import.meta.env.VITE_API_BASE_URL : null;
+  const apiClient = apiBase ? new ApiClient(apiBase, appId, async () => auth?.currentUser ? auth.currentUser.getIdToken() : null) : null;
 
   // Auth providers
   const googleProvider = new GoogleAuthProvider();
@@ -282,7 +286,8 @@ export const AuthProvider = ({ children, app, db, appId }) => {
     deleteAccount,
     logout,
     clearError: () => setError(null),
-    appId
+    appId,
+    apiClient
   };
 
   return (

@@ -190,19 +190,31 @@ const PrivacyToggle = ({ isPrivate, onToggle }) => (
 );
 
 export const UserProfile = ({ user, setPage, storage }) => {
-  const { updateUserProfile, logout, isAnonymous } = useAuth();
+  const { updateUserProfile, logout, isAnonymous, apiClient, userId } = useAuth();
   const [showSettings, setShowSettings] = useState(false);
 
   const handleProfileUpdate = async (field, value) => {
     try {
-      await updateUserProfile({ [field]: value });
+      if (apiClient && userId) {
+        await apiClient.updateProfile(userId, { [field]: value });
+      } else {
+        await updateUserProfile({ [field]: value });
+      }
     } catch (error) {
       console.error('Error updating profile:', error);
     }
   };
 
-  const handleAvatarUpdate = async (avatarUrl) => {
-    await handleProfileUpdate('avatar', avatarUrl);
+  const handleAvatarUpdate = async (url) => {
+    try {
+      if (apiClient && userId) {
+        await apiClient.updateProfile(userId, { avatar: url });
+      } else {
+        await updateUserProfile({ avatar: url });
+      }
+    } catch (error) {
+      console.error('Error updating avatar:', error);
+    }
   };
 
   const togglePrivacy = async () => {
@@ -220,6 +232,10 @@ export const UserProfile = ({ user, setPage, storage }) => {
     } catch {
       return 'Recently';
     }
+  };
+
+  const onAvatarUpdate = async (downloadURL) => {
+    await handleAvatarUpdate(downloadURL);
   };
 
   return (
@@ -279,7 +295,7 @@ export const UserProfile = ({ user, setPage, storage }) => {
       {/* Avatar and Name */}
       <AvatarUpload 
         user={user} 
-        onAvatarUpdate={handleAvatarUpdate}
+        onAvatarUpdate={onAvatarUpdate}
         storage={storage}
       />
       
