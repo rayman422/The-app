@@ -81,43 +81,77 @@ export const AuthProvider = ({ children, app, db, appId }) => {
         setUserId(currentUserId);
 
         try {
-          // Get user profile from Firestore
-          const userDocRef = doc(db, 'artifacts', appId, 'users', currentUserId, 'userProfile', 'profile');
-          const userDoc = await getDoc(userDocRef);
-          
-          if (userDoc.exists()) {
-            const userData = userDoc.data();
-            setUser({
-              uid: currentUserId,
-              email: authUser.email,
-              isAnonymous: authUser.isAnonymous,
-              ...userData
-            });
+          // Prefer API when available
+          if (apiClient) {
+            try {
+              const profile = await apiClient.getProfile(currentUserId);
+              setUser({
+                uid: currentUserId,
+                email: authUser.email,
+                isAnonymous: authUser.isAnonymous,
+                ...profile
+              });
+            } catch {
+              // Create default profile via API if missing
+              const defaultUser = {
+                name: authUser.displayName || 'Angler',
+                username: authUser.email?.split('@')[0] || `angler_${currentUserId.slice(0, 8)}`,
+                email: authUser.email || '',
+                location: '',
+                catches: 0,
+                followers: 0,
+                following: 0,
+                species: 0,
+                gearCount: 0,
+                locations: 0,
+                profilePrivacy: 'public',
+                avatar: authUser.photoURL || null,
+                bio: '',
+                joinDate: new Date().toISOString(),
+                isAnonymous: authUser.isAnonymous
+              };
+              await apiClient.updateProfile(currentUserId, defaultUser);
+              setUser({ uid: currentUserId, ...defaultUser });
+            }
           } else {
-            // Create default profile for new users
-            const defaultUser = {
-              name: authUser.displayName || 'Angler',
-              username: authUser.email?.split('@')[0] || `angler_${currentUserId.slice(0, 8)}`,
-              email: authUser.email,
-              location: '',
-              catches: 0,
-              followers: 0,
-              following: 0,
-              species: 0,
-              gearCount: 0,
-              locations: 0,
-              profilePrivacy: 'public',
-              avatar: authUser.photoURL,
-              bio: '',
-              joinDate: new Date().toISOString(),
-              isAnonymous: authUser.isAnonymous
-            };
+            // Firestore direct
+            const userDocRef = doc(db, 'artifacts', appId, 'users', currentUserId, 'userProfile', 'profile');
+            const userDoc = await getDoc(userDocRef);
             
-            await setDoc(userDocRef, defaultUser);
-            setUser({
-              uid: currentUserId,
-              ...defaultUser
-            });
+            if (userDoc.exists()) {
+              const userData = userDoc.data();
+              setUser({
+                uid: currentUserId,
+                email: authUser.email,
+                isAnonymous: authUser.isAnonymous,
+                ...userData
+              });
+            } else {
+              // Create default profile for new users
+              const defaultUser = {
+                name: authUser.displayName || 'Angler',
+                username: authUser.email?.split('@')[0] || `angler_${currentUserId.slice(0, 8)}`,
+                email: authUser.email,
+                location: '',
+                catches: 0,
+                followers: 0,
+                following: 0,
+                species: 0,
+                gearCount: 0,
+                locations: 0,
+                profilePrivacy: 'public',
+                avatar: authUser.photoURL,
+                bio: '',
+                joinDate: new Date().toISOString(),
+                isAnonymous: authUser.isAnonymous
+              };
+              
+              await setDoc(userDocRef, defaultUser);
+              setUser({
+                uid: currentUserId,
+                ...defaultUser
+              });
+            }
           }
         } catch (error) {
           console.error('Error fetching user profile:', error);
@@ -131,7 +165,7 @@ export const AuthProvider = ({ children, app, db, appId }) => {
     });
 
     return () => unsubscribe();
-  }, [auth, db, appId]);
+  }, [auth, db, appId, apiClient]);
 
   // Auth methods
   const signInWithEmail = async (email, password) => {

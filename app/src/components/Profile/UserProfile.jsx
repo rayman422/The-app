@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../Auth/AuthWrapper';
 import { motion } from 'framer-motion';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
@@ -192,6 +192,23 @@ const PrivacyToggle = ({ isPrivate, onToggle }) => (
 export const UserProfile = ({ user, setPage, storage }) => {
   const { updateUserProfile, logout, isAnonymous, apiClient, userId } = useAuth();
   const [showSettings, setShowSettings] = useState(false);
+  const [recentCatches, setRecentCatches] = useState([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      if (apiClient && userId) {
+        try {
+          const list = await apiClient.listCatches(userId);
+          if (!cancelled) setRecentCatches(list.slice(0, 5));
+        } catch { 
+          if (!cancelled) setRecentCatches([]);
+        }
+      }
+    };
+    load();
+    return () => { cancelled = true; };
+  }, [apiClient, userId]);
 
   const handleProfileUpdate = async (field, value) => {
     try {
@@ -395,9 +412,8 @@ export const UserProfile = ({ user, setPage, storage }) => {
             Log Catch
           </motion.button>
         </div>
-        
         <div className="space-y-4">
-          {(user.catches || 0) === 0 ? (
+          {recentCatches.length === 0 ? (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -408,16 +424,19 @@ export const UserProfile = ({ user, setPage, storage }) => {
               </div>
               <div className="flex-1">
                 <h3 className="text-white font-semibold">Start Your Logbook</h3>
-                <p className="text-gray-400 text-sm">
-                  Track all your catches in one place! Find and relive your fishing memories whenever you'd like.
-                </p>
+                <p className="text-gray-400 text-sm">Track your catches and see them appear here.</p>
               </div>
             </motion.div>
           ) : (
-            <div className="text-center text-gray-400 py-8">
-              <Fish size={48} className="mx-auto mb-2 opacity-50" />
-              <p>Your recent catches will appear here</p>
-            </div>
+            recentCatches.map((c) => (
+              <div key={c.id} className="p-4 bg-slate-800 rounded-xl text-gray-300">
+                <div className="flex justify-between">
+                  <div className="font-semibold text-white">{c.species || 'Unknown species'}</div>
+                  <div className="text-sm">{c.weight ? `${c.weight} lbs` : ''} {c.length ? `${c.length} in` : ''}</div>
+                </div>
+                <div className="text-xs text-gray-500 mt-1">{c.dateTime ? new Date(c.dateTime.seconds ? c.dateTime.seconds * 1000 : c.dateTime).toLocaleString() : ''}</div>
+              </div>
+            ))
           )}
         </div>
       </div>
