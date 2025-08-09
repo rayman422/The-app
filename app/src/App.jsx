@@ -32,6 +32,10 @@ const storage = app ? getStorage(app) : null;
 // Initialize database helper
 const fishingDB = db ? new FishingDatabase(db, appId) : null;
 
+if (typeof window !== 'undefined') {
+  window.__fishingDB = fishingDB;
+}
+
 const AppContent = () => {
   const { isAuthenticated, isLoading } = useAuth();
   const [showSignUp, setShowSignUp] = useState(false);

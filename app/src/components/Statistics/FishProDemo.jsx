@@ -28,6 +28,7 @@ import {
   Sunset
 } from 'lucide-react';
 import { useAuth } from '../Auth/AuthWrapper';
+import { useEffect, useMemo } from 'react';
 
 // Data for charts from first model
 const monthlyCatches = [
@@ -329,7 +330,7 @@ const DashboardView = ({ user, userId, setSubPage }) => (
   </div>
 );
 
-const SpeciesView = () => (
+const SpeciesView = ({ speciesOverride }) => (
   <div className="space-y-6">
     <div className="flex items-center justify-between">
       <h2 className="text-xl font-bold text-gray-900">Local Species</h2>
@@ -343,7 +344,7 @@ const SpeciesView = () => (
       </div>
     </div>
     <div className="grid gap-4">
-      {fishSpecies.map((species, index) => (
+      {(speciesOverride || fishSpecies).map((species, index) => (
         <div
           key={index}
           className="bg-white rounded-2xl p-4 shadow-lg cursor-pointer hover:shadow-xl transition-shadow"
@@ -408,7 +409,7 @@ const LogbookView = () => (
   </div>
 );
 
-const AnalyticsView = () => (
+const AnalyticsView = ({ monthlyOverride }) => (
   <div className="space-y-6">
     <h2 className="text-xl font-bold text-gray-900">Fishing Analytics</h2>
     <div className="grid grid-cols-2 gap-4">
@@ -434,7 +435,7 @@ const AnalyticsView = () => (
     <div className="bg-white rounded-2xl p-6 mb-4 shadow-lg">
       <h3 className="text-gray-900 text-lg font-semibold mb-2">Monthly Catches</h3>
       <ResponsiveContainer width="100%" height={200}>
-        <BarChart data={monthlyCatches}>
+        <BarChart data={monthlyOverride || monthlyCatches}>
           <XAxis dataKey="name" stroke="#94a3b8" />
           <YAxis stroke="#94a3b8" />
           <Tooltip cursor={{ fill: 'rgba(243,244,246,0.5)' }} />
@@ -451,8 +452,55 @@ const AnalyticsView = () => (
 
 export const FishProDemo = () => {
   const { user, userId, isLoading } = useAuth();
-  const [activeTab, setActiveTab] = useState('dashboard');
-  const [subPage, setSubPage] = useState(null);
+  const [activeTab, setActiveTab] = React.useState('dashboard');
+  const [subPage, setSubPage] = React.useState(null);
+  const [speciesLive, setSpeciesLive] = React.useState(null);
+  const [monthlyLive, setMonthlyLive] = React.useState(null);
+
+  // Try to pull live data via global fishingDB if passed down through window or context
+  const fishingDB = window.__fishingDB || null;
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        if (fishingDB) {
+          const list = await fishingDB.getSpecies();
+          if (mounted) setSpeciesLive(list);
+        }
+      } catch {}
+    })();
+    return () => { mounted = false; };
+  }, [fishingDB]);
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        if (fishingDB && userId) {
+          const stats = await fishingDB.getUserStatistics(userId, 'year');
+          if (mounted) {
+            const months = Array.from({ length: 12 }, (_, m) => ({ name: 'JFMAMJJASOND'[m], catches: stats.monthlyBreakdown[m] || 0 }));
+            setMonthlyLive(months);
+          }
+        }
+      } catch {}
+    })();
+    return () => { mounted = false; };
+  }, [fishingDB, userId]);
+
+  const speciesData = useMemo(() => {
+    if (!speciesLive) return fishSpecies;
+    return speciesLive.slice(0, 6).map(s => ({
+      name: s.commonName,
+      catches: s.totalCatches || 0,
+      optimal: (s.seasons && s.seasons[0]) || 'Varies',
+      temp: '—',
+      image: '🐟'
+    }));
+  }, [speciesLive]);
+
+  const monthlyData = monthlyLive || monthlyCatches;
 
   const renderContent = () => {
     if (isLoading || !user) {
@@ -475,11 +523,11 @@ export const FishProDemo = () => {
       case 'dashboard':
         return <DashboardView user={user} userId={userId} setSubPage={setSubPage} />;
       case 'species':
-        return <SpeciesView />;
+        return <SpeciesView speciesOverride={speciesData} />;
       case 'logbook':
         return <LogbookView />;
       case 'analytics':
-        return <AnalyticsView />;
+        return <AnalyticsView monthlyOverride={monthlyData} />;
       default:
         return <DashboardView user={user} userId={userId} setSubPage={setSubPage} />;
     }

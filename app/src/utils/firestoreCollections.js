@@ -242,6 +242,23 @@ export class FishingDatabase {
     return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
   }
 
+  async updateGear(userId, gearId, updates) {
+    const gearDocRef = this.getDocRef('gear', gearId, userId);
+    await updateDoc(gearDocRef, {
+      ...updates,
+      updatedAt: serverTimestamp()
+    });
+  }
+
+  async deleteGear(userId, gearId) {
+    const gearDocRef = this.getDocRef('gear', gearId, userId);
+    const gearDoc = await getDoc(gearDocRef);
+    if (gearDoc.exists()) {
+      await deleteDoc(gearDocRef);
+      await this.updateUserProfile(userId, { gearCount: increment(-1) });
+    }
+  }
+
   // Species Database Operations
   async getSpecies(region = null, waterType = null) {
     const speciesRef = this.getCollectionRef('species');
