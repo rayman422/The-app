@@ -409,6 +409,9 @@ export class FishingDatabase {
         const date = catchData.dateTime.toDate ? catchData.dateTime.toDate() : new Date(catchData.dateTime);
         const month = date.getMonth();
         months[month] = (months[month] || 0) + 1;
+        const hour = date.getHours();
+        const segment = hour < 6 ? 'Night' : hour < 12 ? 'Morning' : hour < 18 ? 'Afternoon' : 'Evening';
+        timeOfDay[segment] = (timeOfDay[segment] || 0) + 1;
       }
 
       // Bait tracking
