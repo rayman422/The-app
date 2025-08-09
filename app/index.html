@@ -4,10 +4,23 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Vite + React</title>
+    <title>Fishing App</title>
   </head>
   <body>
     <div id="root"></div>
+    <script type="module">
+      const appId = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_APP_ID) || 'default-app-id';
+      globalThis.__app_id = appId;
+
+      const cfg = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_FIREBASE_CONFIG) || null;
+      if (cfg) {
+        try {
+          globalThis.__firebase_config = typeof cfg === 'string' ? JSON.parse(cfg) : cfg;
+        } catch (e) {
+          console.warn('Invalid VITE_FIREBASE_CONFIG; expected JSON string');
+        }
+      }
+    </script>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
