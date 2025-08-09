@@ -4,10 +4,14 @@ admin.initializeApp();
 
 const db = admin.firestore();
 const storage = admin.storage();
+const APP_ID = process.env.APP_ID || 'default-app-id';
 
 // On user signup: create a default profile doc
 exports.onAuthCreate = functions.auth.user().onCreate(async (user) => {
-  const profileRef = db.collection('users').doc(user.uid).collection('profile').doc('default');
+  const profileRef = db
+    .collection('artifacts').doc(APP_ID)
+    .collection('users').doc(user.uid)
+    .collection('userProfile').doc('profile');
   await profileRef.set({
     displayName: user.displayName || '',
     photoURL: user.photoURL || '',
@@ -15,25 +19,31 @@ exports.onAuthCreate = functions.auth.user().onCreate(async (user) => {
     bio: '',
     location: null,
     joinDate: admin.firestore.FieldValue.serverTimestamp(),
-    privacy: 'private'
+    profilePrivacy: 'private'
   }, { merge: true });
 });
 
 // On user delete: purge user data and storage
 exports.onAuthDelete = functions.auth.user().onDelete(async (user) => {
-  const userRef = db.collection('users').doc(user.uid);
+  const userRef = db
+    .collection('artifacts').doc(APP_ID)
+    .collection('users').doc(user.uid);
   // Recursively delete user documents and subcollections
   await admin.firestore().recursiveDelete(userRef);
   // Delete user storage files
-  await storage.bucket().deleteFiles({ prefix: `users/${user.uid}/` });
+  await storage.bucket().deleteFiles({ prefix: `artifacts/${APP_ID}/users/${user.uid}/` });
 });
 
 // Aggregate basic catch stats per user on any catch write
 exports.aggregateCatchStats = functions.firestore
-  .document('users/{uid}/catches/{catchId}')
+  .document('artifacts/{appId}/users/{uid}/catches/{catchId}')
   .onWrite(async (_change, context) => {
     const uid = context.params.uid;
-    const catchesSnap = await db.collection('users').doc(uid).collection('catches').get();
+    const appId = context.params.appId;
+    const catchesSnap = await db
+      .collection('artifacts').doc(appId)
+      .collection('users').doc(uid)
+      .collection('catches').get();
 
     let total = 0;
     const bySpecies = {};
@@ -46,17 +56,21 @@ exports.aggregateCatchStats = functions.firestore
       const data = doc.data();
       const speciesId = data.speciesId || 'unknown';
       bySpecies[speciesId] = (bySpecies[speciesId] || 0) + 1;
-      if (data.caughtAt && data.caughtAt.toMillis && data.caughtAt.toMillis() >= since.toMillis()) {
+      if (data.dateTime && data.dateTime.toMillis && data.dateTime.toMillis() >= since.toMillis()) {
         last30 += 1;
       }
     });
 
-    await db.collection('users').doc(uid).collection('profile').doc('stats').set({
-      totalCatches: total,
-      catchesBySpecies: bySpecies,
-      catchesLast30Days: last30,
-      updatedAt: admin.firestore.FieldValue.serverTimestamp()
-    }, { merge: true });
+    await db
+      .collection('artifacts').doc(appId)
+      .collection('users').doc(uid)
+      .collection('userProfile').doc('stats')
+      .set({
+        totalCatches: total,
+        catchesBySpecies: bySpecies,
+        catchesLast30Days: last30,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      }, { merge: true });
   });
 
 // Callable to generate short-lived signed URL for a user's own file
@@ -66,7 +80,8 @@ exports.getSignedImageUrl = functions.https.onCall(async (data, context) => {
   }
   const uid = context.auth.uid;
   const filePath = data && data.filePath;
-  if (typeof filePath !== 'string' || !filePath.startsWith(`users/${uid}/`)) {
+  const validPrefix = `artifacts/${APP_ID}/users/${uid}/`;
+  if (typeof filePath !== 'string' || !filePath.startsWith(validPrefix)) {
     throw new functions.https.HttpsError('permission-denied', 'Invalid file path');
   }
   const expires = Date.now() + 15 * 60 * 1000; // 15 minutes

@@ -4,10 +4,10 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "VITE_APP_ID=${VITE_APP_ID:-default-app-id} vite",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "VITE_APP_ID=${VITE_APP_ID:-default-app-id} vite preview"
   },
   "dependencies": {
     "firebase": "^12.1.0",

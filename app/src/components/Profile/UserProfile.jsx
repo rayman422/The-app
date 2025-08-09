@@ -40,7 +40,7 @@ const StatCard = ({ icon, label, value, onClick, clickable = false }) => (
 const AvatarUpload = ({ user, onAvatarUpdate, storage }) => {
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef();
-  const { userId } = useAuth();
+  const { userId, appId } = useAuth();
 
   const handleFileSelect = async (event) => {
     const file = event.target.files[0];
@@ -50,7 +50,7 @@ const AvatarUpload = ({ user, onAvatarUpdate, storage }) => {
       setUploading(true);
       
       // Create storage reference
-      const avatarRef = ref(storage, `artifacts/default-app-id/users/${userId}/avatar/${file.name}`);
+      const avatarRef = ref(storage, `artifacts/${appId}/users/${userId}/avatar/${file.name}`);
       
       // Upload file
       await uploadBytes(avatarRef, file);
@@ -190,19 +190,31 @@ const PrivacyToggle = ({ isPrivate, onToggle }) => (
 );
 
 export const UserProfile = ({ user, setPage, storage }) => {
-  const { updateUserProfile, logout, isAnonymous } = useAuth();
+  const { updateUserProfile, logout, isAnonymous, apiClient, userId } = useAuth();
   const [showSettings, setShowSettings] = useState(false);
 
   const handleProfileUpdate = async (field, value) => {
     try {
-      await updateUserProfile({ [field]: value });
+      if (apiClient && userId) {
+        await apiClient.updateProfile(userId, { [field]: value });
+      } else {
+        await updateUserProfile({ [field]: value });
+      }
     } catch (error) {
       console.error('Error updating profile:', error);
     }
   };
 
-  const handleAvatarUpdate = async (avatarUrl) => {
-    await handleProfileUpdate('avatar', avatarUrl);
+  const handleAvatarUpdate = async (url) => {
+    try {
+      if (apiClient && userId) {
+        await apiClient.updateProfile(userId, { avatar: url });
+      } else {
+        await updateUserProfile({ avatar: url });
+      }
+    } catch (error) {
+      console.error('Error updating avatar:', error);
+    }
   };
 
   const togglePrivacy = async () => {
@@ -220,6 +232,10 @@ export const UserProfile = ({ user, setPage, storage }) => {
     } catch {
       return 'Recently';
     }
+  };
+
+  const onAvatarUpdate = async (downloadURL) => {
+    await handleAvatarUpdate(downloadURL);
   };
 
   return (
@@ -279,7 +295,7 @@ export const UserProfile = ({ user, setPage, storage }) => {
       {/* Avatar and Name */}
       <AvatarUpload 
         user={user} 
-        onAvatarUpdate={handleAvatarUpdate}
+        onAvatarUpdate={onAvatarUpdate}
         storage={storage}
       />
       

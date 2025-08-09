@@ -7,7 +7,7 @@
     "node": "20"
   },
   "scripts": {
-    "start": "firebase emulators:start --only functions,firestore,storage",
+    "start": "APP_ID=${APP_ID:-default-app-id} firebase emulators:start --only functions,firestore,storage",
     "serve": "firebase emulators:start --only functions",
     "deploy": "firebase deploy --only functions",
     "lint": "echo 'no linter configured'"

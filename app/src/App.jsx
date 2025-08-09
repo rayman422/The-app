@@ -11,12 +11,15 @@ import { motion, AnimatePresence } from 'framer-motion';
 import './index.css';
 
 // Read provided globals safely via globalThis to avoid no-undef
+const envFirebaseConfig = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_FIREBASE_CONFIG)
+  ? import.meta.env.VITE_FIREBASE_CONFIG
+  : null;
 const rawFirebaseConfig = (typeof globalThis !== 'undefined' && '__firebase_config' in globalThis)
   ? globalThis.__firebase_config
-  : null;
+  : envFirebaseConfig;
 const appId = (typeof globalThis !== 'undefined' && '__app_id' in globalThis)
   ? globalThis.__app_id
-  : 'default-app-id';
+  : ((typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_APP_ID) ? import.meta.env.VITE_APP_ID : 'default-app-id');
 
 // Initialize Firebase safely (HMR-safe, guard missing config)
 const firebaseConfig = rawFirebaseConfig
