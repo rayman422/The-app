@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { ChevronLeft, Plus, Fish, Upload, MapPin, Image as ImageIcon } from 'lucide-react';
 import { useAuth } from '../Auth/AuthWrapper';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { MapPicker } from '../Map/MapPicker';
 
 export const AddCatch = ({ setPage, fishingDB, storage }) => {
   const { userId } = useAuth();
@@ -23,6 +24,7 @@ export const AddCatch = ({ setPage, fishingDB, storage }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [photos, setPhotos] = useState([]);
   const [speciesOptions, setSpeciesOptions] = useState([]);
+  const [mapOpen, setMapOpen] = useState(false);
   const canSubmit = !!userId && !!fishingDB;
 
   useEffect(() => {
@@ -192,7 +194,10 @@ export const AddCatch = ({ setPage, fishingDB, storage }) => {
               <MapPin size={18} />
               <span>Location</span>
             </div>
-            <button type="button" onClick={onPickLocation} className="text-emerald-400 hover:text-emerald-300 text-sm">Use current location</button>
+            <div className="flex items-center gap-3">
+              <button type="button" onClick={onPickLocation} className="text-emerald-400 hover:text-emerald-300 text-sm">Use current location</button>
+              <button type="button" onClick={() => setMapOpen(true)} className="text-emerald-400 hover:text-emerald-300 text-sm">Pick on map</button>
+            </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -205,6 +210,31 @@ export const AddCatch = ({ setPage, fishingDB, storage }) => {
             </div>
           </div>
         </div>
+
+        {mapOpen && (
+          <div className="fixed inset-0 bg-black/60 flex items-end sm:items-center justify-center p-4 z-50">
+            <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-md p-4 text-white">
+              <div className="flex items-center justify-between mb-3">
+                <div className="font-semibold">Select Location</div>
+                <button onClick={() => setMapOpen(false)} className="text-gray-400">Close</button>
+              </div>
+              <div className="mb-3">
+                <MapPicker
+                  latitude={parseFloat((document.querySelector('input[name=\"latitude\"]')?.value) || '0') || undefined}
+                  longitude={parseFloat((document.querySelector('input[name=\"longitude\"]')?.value) || '0') || undefined}
+                  onChange={({ latitude, longitude }) => {
+                    setValue('latitude', latitude.toFixed(6));
+                    setValue('longitude', longitude.toFixed(6));
+                  }}
+                  height={320}
+                />
+              </div>
+              <div className="flex justify-end">
+                <button onClick={() => setMapOpen(false)} className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white">Done</button>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="flex items-center gap-2 text-white">
           <input id="isPublic" type="checkbox" className="w-4 h-4" {...register('isPublic')} />
