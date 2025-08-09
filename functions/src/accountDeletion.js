@@ -1,31 +1,19 @@
 const functions = require('firebase-functions');
 const admin = require('firebase-admin');
-admin.initializeApp();
 
-const db = admin.firestore();
-const storage = admin.storage();
-const APP_ID = process.env.APP_ID || 'default-app-id';
-
-// On user signup: create a default profile doc
-exports.onAuthCreate = functions.auth.user().onCreate(async (user) => {
-  const profileRef = db
-    .collection('artifacts').doc(APP_ID)
-    .collection('users').doc(user.uid)
-    .collection('userProfile').doc('profile');
-  await profileRef.set({
-    displayName: user.displayName || '',
-    photoURL: user.photoURL || '',
-    email: user.email || '',
-    bio: '',
-    location: null,
-    joinDate: admin.firestore.FieldValue.serverTimestamp(),
-    profilePrivacy: 'private'
-  }, { merge: true });
-});
-
-// On user delete: purge user data and storage
-exports.onAuthDelete = functions.auth.user().onDelete(async (user) => {
+/**
+ * Cloud Function to handle account deletion cleanup
+ * Deletes all user data when an account is deleted
+ * 
+ * This function is triggered when a user account is deleted from Firebase Auth
+ * It ensures complete data cleanup for GDPR/CCPA compliance
+ */
+exports.onUserDeleted = functions.auth.user().onDelete(async (user) => {
   const userId = user.uid;
+  const db = admin.firestore();
+  const storage = admin.storage();
+  const bucket = storage.bucket();
+
   console.log(`Starting cleanup for deleted user: ${userId}`);
 
   const cleanupSummary = {
@@ -41,7 +29,7 @@ exports.onAuthDelete = functions.auth.user().onDelete(async (user) => {
     await cleanupFirestoreData(userId, db, cleanupSummary);
     
     // Delete Storage files
-    await cleanupStorageFiles(userId, storage.bucket(), cleanupSummary);
+    await cleanupStorageFiles(userId, bucket, cleanupSummary);
     
     console.log(`Cleanup completed for user ${userId}:`, cleanupSummary);
     
@@ -59,7 +47,9 @@ exports.onAuthDelete = functions.auth.user().onDelete(async (user) => {
   return cleanupSummary;
 });
 
-// Helper function to clean up Firestore data
+/**
+ * Clean up all Firestore data for the deleted user
+ */
 async function cleanupFirestoreData(userId, db, cleanupSummary) {
   const batch = db.batch();
   const collections = [
@@ -106,7 +96,9 @@ async function cleanupFirestoreData(userId, db, cleanupSummary) {
   }
 }
 
-// Helper function to clean up Storage files
+/**
+ * Clean up all Storage files for the deleted user
+ */
 async function cleanupStorageFiles(userId, bucket, cleanupSummary) {
   try {
     const [files] = await bucket.getFiles({
@@ -142,7 +134,9 @@ async function cleanupStorageFiles(userId, bucket, cleanupSummary) {
   }
 }
 
-// Helper function to log cleanup completion
+/**
+ * Log successful cleanup completion for audit purposes
+ */
 async function logCleanupCompletion(userId, cleanupSummary) {
   try {
     const auditLog = {
@@ -153,14 +147,16 @@ async function logCleanupCompletion(userId, cleanupSummary) {
       status: 'success'
     };
 
-    await db.collection('auditLogs').add(auditLog);
+    await admin.firestore().collection('auditLogs').add(auditLog);
     console.log(`Audit log created for successful cleanup of user ${userId}`);
   } catch (error) {
     console.error(`Failed to create audit log for user ${userId}:`, error);
   }
 }
 
-// Helper function to log cleanup failure
+/**
+ * Log cleanup failure for investigation
+ */
 async function logCleanupFailure(userId, error, cleanupSummary) {
   try {
     const auditLog = {
@@ -176,72 +172,77 @@ async function logCleanupFailure(userId, error, cleanupSummary) {
       status: 'failed'
     };
 
-    await db.collection('auditLogs').add(auditLog);
+    await admin.firestore().collection('auditLogs').add(auditLog);
     console.log(`Audit log created for failed cleanup of user ${userId}`);
   } catch (logError) {
-    console.error(`Failed to create failure audit log for user ${userId}:`, error);
+    console.error(`Failed to create failure audit log for user ${userId}:`, logError);
   }
 }
 
-// Aggregate basic catch stats per user on any catch write
-exports.aggregateCatchStats = functions.firestore
-  .document('artifacts/{appId}/users/{uid}/catches/{catchId}')
-  .onWrite(async (_change, context) => {
-    const uid = context.params.uid;
-    const appId = context.params.appId;
-    const catchesSnap = await db
-      .collection('artifacts').doc(appId)
-      .collection('users').doc(uid)
-      .collection('catches').get();
+/**
+ * Manual cleanup function for admin use
+ * Can be called manually if automatic cleanup fails
+ */
+exports.manualUserCleanup = functions.https.onCall(async (data, context) => {
+  // Check if the caller is an admin
+  if (!context.auth || !context.auth.token.admin) {
+    throw new functions.https.HttpsError(
+      'permission-denied',
+      'Only admins can perform manual cleanup'
+    );
+  }
 
-    let total = 0;
-    const bySpecies = {};
-    const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000;
-    const since = admin.firestore.Timestamp.fromDate(new Date(Date.now() - thirtyDaysMs));
-    let last30 = 0;
+  const { userId } = data;
+  if (!userId) {
+    throw new functions.https.HttpsError(
+      'invalid-argument',
+      'userId is required'
+    );
+  }
 
-    catchesSnap.forEach((doc) => {
-      total += 1;
-      const data = doc.data();
-      const speciesId = data.speciesId || 'unknown';
-      bySpecies[speciesId] = (bySpecies[speciesId] || 0) + 1;
-      if (data.dateTime && data.dateTime.toMillis && data.dateTime.toMillis() >= since.toMillis()) {
-        last30 += 1;
-      }
+  console.log(`Manual cleanup requested for user: ${userId}`);
+
+  try {
+    const db = admin.firestore();
+    const storage = admin.storage();
+    const bucket = storage.bucket();
+
+    const cleanupSummary = {
+      userId: userId,
+      deletionDate: new Date().toISOString(),
+      deletedCollections: {},
+      deletedStorageFiles: 0,
+      errors: [],
+      manualCleanup: true,
+      requestedBy: context.auth.uid
+    };
+
+    // Perform cleanup
+    await cleanupFirestoreData(userId, db, cleanupSummary);
+    await cleanupStorageFiles(userId, bucket, cleanupSummary);
+
+    // Log manual cleanup
+    await logCleanupCompletion(userId, cleanupSummary);
+
+    return {
+      success: true,
+      message: `Manual cleanup completed for user ${userId}`,
+      summary: cleanupSummary
+    };
+
+  } catch (error) {
+    console.error(`Manual cleanup failed for user ${userId}:`, error);
+    
+    // Log manual cleanup failure
+    await logCleanupFailure(userId, error, {
+      userId: userId,
+      manualCleanup: true,
+      requestedBy: context.auth.uid
     });
 
-    await db
-      .collection('artifacts').doc(appId)
-      .collection('users').doc(uid)
-      .collection('userProfile').doc('stats')
-      .set({
-        totalCatches: total,
-        catchesBySpecies: bySpecies,
-        catchesLast30Days: last30,
-        updatedAt: admin.firestore.FieldValue.serverTimestamp()
-      }, { merge: true });
-  });
-
-// Callable to generate short-lived signed URL for a user's own file
-exports.getSignedImageUrl = functions.https.onCall(async (data, context) => {
-  if (!context.auth) {
-    throw new functions.https.HttpsError('unauthenticated', 'Must be signed in');
+    throw new functions.https.HttpsError(
+      'internal',
+      `Manual cleanup failed: ${error.message}`
+    );
   }
-  const uid = context.auth.uid;
-  const filePath = data && data.filePath;
-  const validPrefix = `artifacts/${APP_ID}/users/${uid}/`;
-  if (typeof filePath !== 'string' || !filePath.startsWith(validPrefix)) {
-    throw new functions.https.HttpsError('permission-denied', 'Invalid file path');
-  }
-  const expires = Date.now() + 15 * 60 * 1000; // 15 minutes
-  const [url] = await storage.bucket().file(filePath).getSignedUrl({
-    action: 'read',
-    expires
-  });
-  return { url, expires };
-});
-
-// Scheduled cleanup (placeholder)
-exports.scheduledCleanup = functions.pubsub.schedule('0 3 * * *').timeZone('UTC').onRun(async () => {
-  return null;
 });

@@ -1,5 +1,7 @@
 {
   "projects": {
-    "default": "REPLACE_WITH_PROJECT_ID"
+    "default": "fishing-app-dev",
+    "dev": "fishing-app-dev",
+    "prod": "fishing-app-prod"
   }
 }

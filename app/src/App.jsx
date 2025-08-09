@@ -1,33 +1,15 @@
 import { useState, useEffect } from 'react';
-import { getApp, getApps, initializeApp } from 'firebase/app';
-import { getFirestore } from 'firebase/firestore';
-import { getStorage } from 'firebase/storage';
 import { AuthProvider } from './components/Auth/AuthWrapper';
 import { LoginScreen } from './components/Auth/LoginScreen';
 import { MainApp } from './components/MainApp';
 import { useAuth } from './components/Auth/AuthWrapper';
 import { FishingDatabase } from './utils/firestoreCollections';
 import { motion, AnimatePresence } from 'framer-motion';
+import { db, storage } from './config/firebase';
 import './index.css';
 
-// Read provided globals safely via globalThis to avoid no-undef
-const envFirebaseConfig = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_FIREBASE_CONFIG)
-  ? import.meta.env.VITE_FIREBASE_CONFIG
-  : null;
-const rawFirebaseConfig = (typeof globalThis !== 'undefined' && '__firebase_config' in globalThis)
-  ? globalThis.__firebase_config
-  : envFirebaseConfig;
-const appId = (typeof globalThis !== 'undefined' && '__app_id' in globalThis)
-  ? globalThis.__app_id
-  : ((typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_APP_ID) ? import.meta.env.VITE_APP_ID : 'default-app-id');
-
-// Initialize Firebase safely (HMR-safe, guard missing config)
-const firebaseConfig = rawFirebaseConfig
-  ? (typeof rawFirebaseConfig === 'string' ? JSON.parse(rawFirebaseConfig) : rawFirebaseConfig)
-  : null;
-const app = firebaseConfig ? (getApps().length ? getApp() : initializeApp(firebaseConfig)) : null;
-const db = app ? getFirestore(app) : null;
-const storage = app ? getStorage(app) : null;
+// Get app ID from environment
+const appId = import.meta.env.VITE_APP_ID || 'fishing-app-dev';
 
 // Initialize database helper
 const fishingDB = db ? new FishingDatabase(db, appId) : null;
@@ -121,7 +103,7 @@ const App = () => {
   }, []);
 
   return (
-    <AuthProvider app={app} db={db} appId={appId}>
+    <AuthProvider appId={appId}>
       <div className="min-h-screen bg-slate-900 font-sans">
         <div className="max-w-md mx-auto relative">
           <AppContent />
