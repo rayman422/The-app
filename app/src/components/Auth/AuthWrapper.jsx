@@ -281,7 +281,8 @@ export const AuthProvider = ({ children, app, db, appId }) => {
     updateUserProfile,
     deleteAccount,
     logout,
-    clearError: () => setError(null)
+    clearError: () => setError(null),
+    appId
   };
 
   return (

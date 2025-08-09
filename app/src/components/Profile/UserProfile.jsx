@@ -40,7 +40,7 @@ const StatCard = ({ icon, label, value, onClick, clickable = false }) => (
 const AvatarUpload = ({ user, onAvatarUpdate, storage }) => {
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef();
-  const { userId } = useAuth();
+  const { userId, appId } = useAuth();
 
   const handleFileSelect = async (event) => {
     const file = event.target.files[0];
@@ -50,7 +50,7 @@ const AvatarUpload = ({ user, onAvatarUpdate, storage }) => {
       setUploading(true);
       
       // Create storage reference
-      const avatarRef = ref(storage, `artifacts/default-app-id/users/${userId}/avatar/${file.name}`);
+      const avatarRef = ref(storage, `artifacts/${appId}/users/${userId}/avatar/${file.name}`);
       
       // Upload file
       await uploadBytes(avatarRef, file);
