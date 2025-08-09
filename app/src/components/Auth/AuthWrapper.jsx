@@ -1,7 +1,6 @@
 /* eslint react-refresh/only-export-components: ["warn", { allowConstantExport: true }] */
 import { useState, useEffect, createContext, useContext } from 'react';
 import { 
-  getAuth, 
   onAuthStateChanged, 
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
@@ -18,6 +17,7 @@ import {
 } from 'firebase/auth';
 import { doc, getDoc, setDoc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { ApiClient } from '../../utils/apiClient';
+import { auth, db } from '../../config/firebase';
 
 const AuthContext = createContext();
 
@@ -29,13 +29,11 @@ export const useAuth = () => {
   return context;
 };
 
-export const AuthProvider = ({ children, app, db, appId }) => {
+export const AuthProvider = ({ children, appId }) => {
   const [user, setUser] = useState(null);
   const [userId, setUserId] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
-
-  const auth = app ? getAuth(app) : null;
 
   const apiBase = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_BASE_URL) ? import.meta.env.VITE_API_BASE_URL : null;
   const apiClient = apiBase ? new ApiClient(apiBase, appId, async () => auth?.currentUser ? auth.currentUser.getIdToken() : null) : null;
