@@ -13,6 +13,7 @@ This service provides a REST API backed by Firestore and Storage following the s
 2. Configure environment:
    - Copy `.env.example` to `.env` and set values
    - Provide Google credentials (e.g., `GOOGLE_APPLICATION_CREDENTIALS` to a service account JSON)
+   - Optionally set `HUGGINGFACE_TOKEN` to enable Hugging Face proxy
 
 ## Run
 ```bash
@@ -31,3 +32,5 @@ uvicorn main:app --reload --host 0.0.0.0 --port 8000
 - `POST /users/{user_id}/catches`
 - `DELETE /users/{user_id}/catches/{catch_id}`
 - `POST /signed-url` (body: `{ "filePath": "artifacts/{APP_ID}/users/{uid}/..." }`)
+- `GET /hf/health` (returns `{ token_present: boolean }`)
+- `POST /hf/infer` (body: `{ model: string, inputs: any, params?: object }`) — proxies to Hugging Face Inference API using server-side token

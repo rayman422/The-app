@@ -105,7 +105,7 @@ const StatChart = ({ title, data, dataKey, barColor }) => (
   </div>
 );
 
-const UserProfile = ({ user, userId, setSubPage }) => (
+const UserProfile = ({ user, userId }) => (
   <div className="flex flex-col items-center p-4 bg-gray-50 min-h-screen pb-20">
     <div className="w-24 h-24 bg-gray-200 rounded-full flex items-center justify-center mt-8">
       <User size={64} className="text-gray-400" />
@@ -248,86 +248,67 @@ const Forecast = () => {
   );
 };
 
-const DashboardView = ({ user, userId, setSubPage }) => (
-  <div className="space-y-6">
-    <div className="bg-gradient-to-br from-blue-600 to-blue-800 rounded-2xl p-6 text-white">
-      <div className="flex justify-between items-start mb-4">
-        <div>
-          <h3 className="text-lg font-medium mb-1">Current Location</h3>
-          <p className="text-blue-200 text-sm">Lake Hartwell, GA</p>
-        </div>
-        <MapPin className="w-5 h-5 text-blue-200" />
+const AITips = ({ apiClient }) => {
+  const [prompt, setPrompt] = useState('bass fishing at dusk in spring with clear water');
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [result, setResult] = useState('');
+
+  const runInference = async () => {
+    if (!apiClient) {
+      setError('API not configured');
+      return;
+    }
+    setIsLoading(true);
+    setError('');
+    setResult('');
+    try {
+      const model = 'google/flan-t5-small';
+      const input = `Provide concise fishing tips for: ${prompt}`;
+      const data = await apiClient.hfInfer(model, input, { max_new_tokens: 128 });
+      // HF response formats vary; handle common cases
+      if (Array.isArray(data)) {
+        const text = data.map((d) => d.generated_text || d.summary_text || JSON.stringify(d)).join('\n');
+        setResult(text);
+      } else if (typeof data === 'object' && data !== null) {
+        setResult(data.generated_text || data.summary_text || JSON.stringify(data));
+      } else {
+        setResult(String(data));
+      }
+    } catch (e) {
+      setError(e.message || 'Request failed');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <div className="bg-white rounded-2xl p-4 shadow-lg space-y-3">
+      <h3 className="text-gray-900 text-lg font-semibold">AI Fishing Tips</h3>
+      <div className="flex space-x-2">
+        <input
+          className="flex-1 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          placeholder="Target species, time, season, water clarity..."
+          value={prompt}
+          onChange={(e) => setPrompt(e.target.value)}
+        />
+        <button
+          onClick={runInference}
+          disabled={isLoading}
+          className="bg-blue-600 text-white font-semibold px-4 py-2 rounded-xl disabled:opacity-50"
+        >
+          {isLoading ? 'Thinking…' : 'Ask AI'}
+        </button>
       </div>
-      <div className="grid grid-cols-3 gap-4">
-        <div className="text-center">
-          <Sun className="w-8 h-8 mx-auto mb-2 text-yellow-300" />
-          <p className="text-2xl font-bold">{currentConditions.temp}°F</p>
-          <p className="text-blue-200 text-sm">Feels {currentConditions.feelsLike}°</p>
+      {error && <div className="text-red-600 text-sm">{error}</div>}
+      {result && (
+        <div className="bg-gray-50 border border-gray-200 rounded-xl p-3 text-gray-800 whitespace-pre-wrap text-sm">
+          {result}
         </div>
-        <div className="text-center">
-          <Wind className="w-8 h-8 mx-auto mb-2" />
-          <p className="text-2xl font-bold">{currentConditions.wind.speed}</p>
-          <p className="text-blue-200 text-sm">{currentConditions.wind.direction} mph</p>
-        </div>
-        <div className="text-center">
-          <Activity className="w-8 h-8 mx-auto mb-2" />
-          <p className="text-2xl font-bold">{currentConditions.pressure}</p>
-          <p className="text-blue-200 text-sm">hPa</p>
-        </div>
-      </div>
+      )}
     </div>
-    {user && (
-      <div className="bg-white rounded-2xl p-6 shadow-lg">
-        <div className="flex items-center space-x-4 mb-4">
-          <div className="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center">
-            <User size={24} className="text-gray-400" />
-          </div>
-          <div>
-            <h3 className="font-semibold text-gray-900">{user.name}</h3>
-            <p className="text-sm text-gray-500">{user.catches} catches logged</p>
-          </div>
-        </div>
-        <div className="grid grid-cols-3 gap-4 mt-4">
-          <div onClick={() => setSubPage('profile')} className="cursor-pointer">
-            <StatCard icon={<User size={32} className="text-gray-400" />} label="Profile" value={user.followers} />
-          </div>
-          <div onClick={() => setSubPage('gear')} className="cursor-pointer">
-            <StatCard icon={<GitPullRequest size={32} className="text-gray-400" />} label="Gear" value={user.gearCount} />
-          </div>
-          <div onClick={() => setSubPage('forecast')} className="cursor-pointer">
-            <StatCard icon={<CloudSun size={32} className="text-gray-400" />} label="Forecast" value={currentConditions.temp + '°'} />
-          </div>
-        </div>
-      </div>
-    )}
-    <div className="bg-white rounded-2xl p-6 shadow-lg">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-semibold text-gray-900">Today's Bite Times</h3>
-        <Clock className="w-5 h-5 text-gray-500" />
-      </div>
-      <div className="space-y-3">
-        {biteTimePrediction.map((bite, index) => (
-          <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-            <span className="font-medium text-gray-800">{bite.time}</span>
-            <div className="flex items-center space-x-2">
-              <div className="flex">
-                {[...Array(10)].map((_, i) => (
-                  <div
-                    key={i}
-                    className={`w-2 h-4 mx-0.5 rounded-sm ${
-                      i < bite.rating ? 'bg-green-500' : 'bg-gray-300'
-                    }`}
-                  />
-                ))}
-              </div>
-              <span className="text-sm text-gray-600">{bite.activity}</span>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  </div>
-);
+  );
+};
 
 const SpeciesView = () => (
   <div className="space-y-6">
@@ -449,8 +430,92 @@ const AnalyticsView = () => (
   </div>
 );
 
+const DashboardView = ({ user, setSubPage, apiClient }) => (
+  <div className="space-y-6">
+    <div className="bg-gradient-to-br from-blue-600 to-blue-800 rounded-2xl p-6 text-white">
+      <div className="flex justify-between items-start mb-4">
+        <div>
+          <h3 className="text-lg font-medium mb-1">Current Location</h3>
+          <p className="text-blue-200 text-sm">Lake Hartwell, GA</p>
+        </div>
+        <MapPin className="w-5 h-5 text-blue-200" />
+      </div>
+      <div className="grid grid-cols-3 gap-4">
+        <div className="text-center">
+          <Sun className="w-8 h-8 mx-auto mb-2 text-yellow-300" />
+          <p className="text-2xl font-bold">{currentConditions.temp}°F</p>
+          <p className="text-blue-200 text-sm">Feels {currentConditions.feelsLike}°</p>
+        </div>
+        <div className="text-center">
+          <Wind className="w-8 h-8 mx-auto mb-2" />
+          <p className="text-2xl font-bold">{currentConditions.wind.speed}</p>
+          <p className="text-blue-200 text-sm">{currentConditions.wind.direction} mph</p>
+        </div>
+        <div className="text-center">
+          <Activity className="w-8 h-8 mx-auto mb-2" />
+          <p className="text-2xl font-bold">{currentConditions.pressure}</p>
+          <p className="text-blue-200 text-sm">hPa</p>
+        </div>
+      </div>
+    </div>
+    {user && (
+      <div className="bg-white rounded-2xl p-6 shadow-lg">
+        <div className="flex items-center space-x-4 mb-4">
+          <div className="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center">
+            <User size={24} className="text-gray-400" />
+          </div>
+          <div>
+            <h3 className="font-semibold text-gray-900">{user.name}</h3>
+            <p className="text-sm text-gray-500">{user.catches} catches logged</p>
+          </div>
+        </div>
+        <div className="grid grid-cols-3 gap-4 mt-4">
+          <div onClick={() => setSubPage('profile')} className="cursor-pointer">
+            <StatCard icon={<User size={32} className="text-gray-400" />} label="Profile" value={user.followers} />
+          </div>
+          <div onClick={() => setSubPage('gear')} className="cursor-pointer">
+            <StatCard icon={<GitPullRequest size={32} className="text-gray-400" />} label="Gear" value={user.gearCount} />
+          </div>
+          <div onClick={() => setSubPage('forecast')} className="cursor-pointer">
+            <StatCard icon={<CloudSun size={32} className="text-gray-400" />} label="Forecast" value={currentConditions.temp + '°'} />
+          </div>
+        </div>
+      </div>
+    )}
+    <div className="bg-white rounded-2xl p-6 shadow-lg">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-lg font-semibold text-gray-900">Today's Bite Times</h3>
+        <Clock className="w-5 h-5 text-gray-500" />
+      </div>
+      <div className="space-y-3">
+        {biteTimePrediction.map((bite, index) => (
+          <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+            <span className="font-medium text-gray-800">{bite.time}</span>
+            <div className="flex items-center space-x-2">
+              <div className="flex">
+                {[...Array(10)].map((_, i) => (
+                  <div
+                    key={i}
+                    className={`w-2 h-4 mx-0.5 rounded-sm ${
+                      i < bite.rating ? 'bg-green-500' : 'bg-gray-300'
+                    }`}
+                  />
+                ))}
+              </div>
+              <span className="text-sm text-gray-600">{bite.activity}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+
+    {/* New AI tips panel */}
+    <AITips apiClient={apiClient} />
+  </div>
+);
+
 export const FishProDemo = () => {
-  const { user, userId, isLoading } = useAuth();
+  const { user, userId, isLoading, apiClient } = useAuth();
   const [activeTab, setActiveTab] = useState('dashboard');
   const [subPage, setSubPage] = useState(null);
 
@@ -463,7 +528,7 @@ export const FishProDemo = () => {
       );
     }
     if (subPage === 'profile') {
-      return <UserProfile user={user} userId={userId} setSubPage={setSubPage} />;
+      return <UserProfile user={user} userId={userId} />;
     }
     if (subPage === 'gear') {
       return <GearList />;
@@ -473,7 +538,7 @@ export const FishProDemo = () => {
     }
     switch (activeTab) {
       case 'dashboard':
-        return <DashboardView user={user} userId={userId} setSubPage={setSubPage} />;
+        return <DashboardView user={user} setSubPage={setSubPage} apiClient={apiClient} />;
       case 'species':
         return <SpeciesView />;
       case 'logbook':
@@ -481,7 +546,7 @@ export const FishProDemo = () => {
       case 'analytics':
         return <AnalyticsView />;
       default:
-        return <DashboardView user={user} userId={userId} setSubPage={setSubPage} />;
+        return <DashboardView user={user} setSubPage={setSubPage} apiClient={apiClient} />;
     }
   };
 
