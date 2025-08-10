@@ -1,6 +1,11 @@
-import { FishProDemo } from './FishProDemo';
+import React, { Suspense, lazy } from 'react';
+
+const FishProDemo = lazy(() => import('./FishProDemo'));
 
 export const Statistics = (props) => {
-  // Delegate to the FishProDemo which contains the full UI
-  return <FishProDemo {...props} />;
+  return (
+    <Suspense fallback={<div className="text-white p-4">Loading statistics…</div>}>
+      <FishProDemo {...props} />
+    </Suspense>
+  );
 };

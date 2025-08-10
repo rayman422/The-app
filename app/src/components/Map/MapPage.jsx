@@ -45,7 +45,9 @@ export const MapPage = ({ setPage }) => {
     const map = mapInstanceRef.current;
     if (!map) return;
     spots.forEach((s) => {
-      const marker = L.marker([s.lat, s.lng]).addTo(map).bindPopup(`<strong>${s.name}</strong>`);
+      const marker = L.circleMarker([s.lat, s.lng], { radius: 6, color: '#10b981', fillColor: '#10b981', fillOpacity: 0.9 })
+        .addTo(map)
+        .bindPopup(`<strong>${s.name}</strong>`);
       markersRef.current.push(marker);
     });
   }, [spots]);
