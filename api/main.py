@@ -13,6 +13,7 @@ from firebase_admin import auth as fb_auth
 from firebase_admin import credentials
 from google.cloud import firestore
 from google.cloud import storage
+import requests
 
 # Load .env if present
 load_dotenv()
@@ -21,6 +22,7 @@ APP_ID = os.getenv("APP_ID", "default-app-id")
 DEV_NO_AUTH = os.getenv("DEV_NO_AUTH", "false").lower() == "true"
 CORS_ORIGINS = [o.strip() for o in os.getenv("CORS_ORIGINS", "http://localhost:5173").split(",") if o.strip()]
 GCS_BUCKET = os.getenv("GCS_BUCKET")
+HUGGINGFACE_TOKEN = os.getenv("HUGGINGFACE_TOKEN")
 
 # Initialize Firebase Admin if not already
 if not firebase_admin._apps:
@@ -230,3 +232,48 @@ async def get_signed_url(req: SignedUrlRequest, uid: Optional[str] = Depends(get
     blob = bucket.blob(req.filePath)
     url = blob.generate_signed_url(expiration=timedelta(minutes=req.ttlMinutes or 15), method="GET")
     return {"url": url, "expiresIn": (req.ttlMinutes or 15) * 60}
+
+
+# --------------------
+# Hugging Face Proxy
+# --------------------
+class HFRequest(BaseModel):
+    model: str
+    inputs: object
+    params: Optional[dict] = None
+
+
+@app.get("/hf/health")
+async def hf_health() -> dict:
+    return {"token_present": bool(HUGGINGFACE_TOKEN)}
+
+
+@app.post("/hf/infer")
+async def hf_infer(payload: HFRequest, uid: Optional[str] = Depends(get_user_id)):
+    if not HUGGINGFACE_TOKEN:
+        raise HTTPException(status_code=501, detail="Hugging Face not configured")
+
+    url = f"https://api-inference.huggingface.co/models/{payload.model}"
+    headers = {
+        "Authorization": f"Bearer {HUGGINGFACE_TOKEN}",
+        "Content-Type": "application/json",
+    }
+    try:
+        resp = requests.post(url, headers=headers, data=json.dumps({
+            "inputs": payload.inputs,
+            **({"parameters": payload.params} if payload.params else {}),
+        }), timeout=60)
+    except requests.RequestException as e:
+        raise HTTPException(status_code=502, detail=f"HF request failed: {e}")
+
+    if resp.status_code >= 400:
+        try:
+            detail = resp.json()
+        except Exception:
+            detail = resp.text
+        raise HTTPException(status_code=resp.status_code, detail=detail)
+
+    try:
+        return resp.json()
+    except Exception:
+        return {"result": resp.text}

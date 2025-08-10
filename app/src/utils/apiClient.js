@@ -42,4 +42,9 @@ export class ApiClient {
   getSignedUrl(filePath, ttlMinutes = 15) {
     return this.request(`/signed-url`, { method: 'POST', body: JSON.stringify({ filePath, ttlMinutes }) });
   }
+
+  // Hugging Face proxy
+  hfInfer(model, inputs, params) {
+    return this.request(`/hf/infer`, { method: 'POST', body: JSON.stringify({ model, inputs, params }) });
+  }
 }

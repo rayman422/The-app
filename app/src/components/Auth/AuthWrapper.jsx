@@ -37,7 +37,9 @@ export const AuthProvider = ({ children, app, db, appId }) => {
 
   const auth = app ? getAuth(app) : null;
 
-  const apiBase = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_BASE_URL) ? import.meta.env.VITE_API_BASE_URL : null;
+  const envApiBase = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_BASE_URL) ? import.meta.env.VITE_API_BASE_URL : null;
+  const globalApiBase = (typeof globalThis !== 'undefined' && '__api_base' in globalThis) ? globalThis.__api_base : null;
+  const apiBase = envApiBase || globalApiBase;
   const apiClient = apiBase ? new ApiClient(apiBase, appId, async () => auth?.currentUser ? auth.currentUser.getIdToken() : null) : null;
 
   // Auth providers
