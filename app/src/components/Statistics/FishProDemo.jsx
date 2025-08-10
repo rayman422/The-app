@@ -105,7 +105,7 @@ const StatChart = ({ title, data, dataKey, barColor }) => (
   </div>
 );
 
-const UserProfile = ({ user, userId, setSubPage }) => (
+const UserProfile = ({ user, userId }) => (
   <div className="flex flex-col items-center p-4 bg-gray-50 min-h-screen pb-20">
     <div className="w-24 h-24 bg-gray-200 rounded-full flex items-center justify-center mt-8">
       <User size={64} className="text-gray-400" />
@@ -248,7 +248,7 @@ const Forecast = () => {
   );
 };
 
-const DashboardView = ({ user, userId, setSubPage }) => (
+const DashboardView = ({ user, setSubPage }) => (
   <div className="space-y-6">
     <div className="bg-gradient-to-br from-blue-600 to-blue-800 rounded-2xl p-6 text-white">
       <div className="flex justify-between items-start mb-4">
@@ -463,7 +463,7 @@ export const FishProDemo = () => {
       );
     }
     if (subPage === 'profile') {
-      return <UserProfile user={user} userId={userId} setSubPage={setSubPage} />;
+      return <UserProfile user={user} userId={userId} />;
     }
     if (subPage === 'gear') {
       return <GearList />;
@@ -473,7 +473,7 @@ export const FishProDemo = () => {
     }
     switch (activeTab) {
       case 'dashboard':
-        return <DashboardView user={user} userId={userId} setSubPage={setSubPage} />;
+        return <DashboardView user={user} setSubPage={setSubPage} />;
       case 'species':
         return <SpeciesView />;
       case 'logbook':
@@ -481,7 +481,7 @@ export const FishProDemo = () => {
       case 'analytics':
         return <AnalyticsView />;
       default:
-        return <DashboardView user={user} userId={userId} setSubPage={setSubPage} />;
+        return <DashboardView user={user} setSubPage={setSubPage} />;
     }
   };
 
