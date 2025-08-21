@@ -64,6 +64,7 @@ export const FishingEcommerce = () => {
 
 	useEffect(() => {
 		if (!mountRef.current) return;
+		const mountElement = mountRef.current;
 
 		const scene = new THREE.Scene();
 		scene.background = new THREE.Color(0x87CEEB);
@@ -79,7 +80,7 @@ export const FishingEcommerce = () => {
 		renderer.shadowMap.enabled = true;
 		renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 		rendererRef.current = renderer;
-		mountRef.current.appendChild(renderer.domElement);
+		mountElement.appendChild(renderer.domElement);
 
 		const ambientLight = new THREE.AmbientLight(0x404040, 0.4);
 		scene.add(ambientLight);
@@ -180,8 +181,8 @@ export const FishingEcommerce = () => {
 
 		return () => {
 			window.removeEventListener('resize', handleResize);
-			if (mountRef.current && renderer.domElement) {
-				mountRef.current.removeChild(renderer.domElement);
+			if (mountElement && renderer.domElement && mountElement.contains(renderer.domElement)) {
+				mountElement.removeChild(renderer.domElement);
 			}
 			renderer.dispose();
 		};
